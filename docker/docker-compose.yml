@@ -1,0 +1,5 @@
+name: server
+
+include:
+  - docker-compose-network.yml
+  - docker-compose-db.yml
