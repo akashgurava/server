@@ -4,7 +4,6 @@ upstreams:
   groups:
     default:
       - 9.9.9.9
-      - 1.1.1.1
   strategy: strict
   timeout: 2s
 
@@ -60,12 +59,22 @@ clientLookup:
     # Docker Services
     traefik:
       - 172.18.0.2
-    postgres:
-      - 172.18.0.11
-    prometheus:
-      - 172.18.0.12
     redis:
-      - 172.18.0.13
+      - 172.18.0.4
+    postgres:
+      - 172.18.0.5
+    pgweb:
+      - 172.18.0.6
+    cadvisor:
+      - 172.18.0.8
+    prometheus:
+      - 172.18.0.9
+    grafana:
+      - 172.18.0.10
+    glances:
+      - 172.18.0.11
+    glances-prom:
+      - 172.18.0.12
 
 caching:
   minTime: 0s
@@ -91,3 +100,4 @@ prometheus:
 ports:
   dns: 53
   http: 4000
+  https: 4001

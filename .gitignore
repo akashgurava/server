@@ -1,2 +1,6 @@
+.DS_STORE
 data
 .env
+bkp
+# Private key file
+acme.json

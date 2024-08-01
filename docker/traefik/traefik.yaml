@@ -1,6 +1,8 @@
 entryPoints:
   web:
     address: :80
+  websecure:
+    address: :443
     http2:
       maxConcurrentStreams: 250
 
@@ -27,3 +29,11 @@ providers:
   docker:
     defaultRule: Host(`{{ .Name }}.lan`)
     exposedByDefault: false
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: play.unsoiled062@passinbox.com
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
