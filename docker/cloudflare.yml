@@ -1,0 +1,17 @@
+tunnel: 1af86743-aaf5-4867-97c2-cf416512c202
+credentials-file: /Users/akash/.cloudflared/1af86743-aaf5-4867-97c2-cf416512c202.json
+
+ingress:
+  - hostname: qbit.225274.xyz
+    service: http://localhost:8088
+  - hostname: sonarr.225274.xyz
+    service: http://localhost:8989
+  - hostname: radarr.225274.xyz
+    service: http://localhost:7878
+  - hostname: jellyfin.225274.xyz
+    service: http://localhost:8096
+  - hostname: grafana.225274.xyz
+    service: http://localhost:3000
+  - hostname: router.225274.xyz
+    service: http://192.168.1.1
+  - service: http_status:404

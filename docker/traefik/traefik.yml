@@ -1,0 +1,47 @@
+api:
+  dashboard: true
+  insecure: true
+
+accesslog:
+  addInternals: true
+
+log:
+  level: DEBUG
+  format: json
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+
+certificatesResolvers:
+  xyzresolver:
+    acme:
+      email: akashgurava@outlook.com
+      storage: /acme.json
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 30s
+        resolvers:
+          - "108.162.194.204:53"
+          - "172.64.33.172:53"
+        disablePropagationCheck: true
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true

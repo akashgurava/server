@@ -1,0 +1,68 @@
+{
+	# Global options
+	email akashgurava@outlook.com
+
+	# Use internal CA for .lan domains
+	local_certs
+
+	servers :443 {
+		name https
+	}
+
+	servers :80 {
+		name http
+		protocols h1 h2c
+	}
+
+	servers {
+		metrics
+	}
+
+	admin :2019
+}
+
+prometheus.lan {
+	tls internal
+	reverse_proxy prometheus:9090
+}
+
+cadvisor.lan {
+	tls internal
+	reverse_proxy cadvisor:8080
+}
+
+node-exporter.lan {
+	tls internal
+	reverse_proxy 192.168.1.2:9100
+}
+
+grafana.lan {
+	tls internal
+	reverse_proxy grafana:3000
+}
+
+qbit.lan {
+	tls internal
+	reverse_proxy qbit:8080
+}
+
+sonarr.lan {
+	tls internal
+	reverse_proxy sonarr:8989
+}
+
+radarr.lan {
+	tls internal
+	reverse_proxy radarr:7878
+}
+
+jellyfin.lan {
+	tls internal
+	reverse_proxy jellyfin:8096
+}
+
+certs.lan {
+	tls internal
+	root * /data/caddy/pki/authorities/local/
+	file_server browse
+}

@@ -1,0 +1,17 @@
+FROM postgres:latest
+
+RUN apt-get update && apt-get install -y \
+  cron brotli \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY backup_postgres.sh /backup.sh
+RUN chmod +x /backup.sh
+COPY entrypoint_postgres.sh /entrypoint_postgres.sh
+RUN chmod +x /entrypoint_postgres.sh
+
+RUN echo "*/1 * * * * /backup.sh >> /backup-data/postgres/log/backup.log 2>&1" | crontab -
+
+HEALTHCHECK --interval=5m --timeout=3s \
+  CMD [ "$(cat /backup-data/postgres/log/backup_status)" = "OK" ]
+
+ENTRYPOINT [ "/bin/bash", "/entrypoint_postgres.sh" ]

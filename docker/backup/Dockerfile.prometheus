@@ -1,0 +1,24 @@
+FROM --platform=linux/arm64 ubuntu:latest
+
+RUN apt-get update && apt-get install -y \
+  cron \
+  wget \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://github.com/prometheus/prometheus/releases/download/v2.37.0/prometheus-2.37.0.linux-arm64.tar.gz \
+  && tar xvfz prometheus-2.37.0.linux-arm64.tar.gz \
+  && cp prometheus-2.37.0.linux-arm64/promtool /usr/local/bin/ \
+  && rm -rf prometheus-2.37.0.linux-arm64*
+
+COPY backup_prometheus.sh /backup.sh
+RUN chmod +x /backup.sh
+
+RUN touch /var/log/backup.log && chmod 666 /var/log/backup.log
+RUN touch /backup_status && chmod 666 /backup_status
+
+RUN echo "0 * * * * /backup.sh >> /var/log/backup.log 2>&1" | crontab -
+
+HEALTHCHECK --interval=5m --timeout=3s \
+  CMD [ "$(cat /backup_status)" = "OK" ]
+
+CMD ["cron", "-f"]
