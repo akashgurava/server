@@ -1,5 +1,5 @@
-tunnel: 1af86743-aaf5-4867-97c2-cf416512c202
-credentials-file: /Users/akash/.cloudflared/1af86743-aaf5-4867-97c2-cf416512c202.json
+tunnel: 887b28ec-ae51-4b5f-a788-7c955f7d2eb2
+credentials-file: /Users/akash/.cloudflared/887b28ec-ae51-4b5f-a788-7c955f7d2eb2.json
 
 ingress:
   - hostname: qbit.225274.xyz
@@ -12,6 +12,10 @@ ingress:
     service: http://localhost:8096
   - hostname: grafana.225274.xyz
     service: http://localhost:3000
-  - hostname: router.225274.xyz
-    service: http://192.168.1.1
+  - hostname: chat.225274.xyz
+    service: http://localhost:4000
+  - hostname: luci.225274.xyz
+    service: http://192.168.1.1:80
+  - hostname: macair.225274.xyz
+    service: ssh://localhost:22
   - service: http_status:404

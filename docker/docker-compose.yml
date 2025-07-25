@@ -12,5 +12,6 @@ networks:
         - subnet: 2001:db8:1::/64
 
 include:
-  - docker-compose-monitor.yml
   - docker-compose-media.yml
+  # - docker-compose-monitor.yml
+  - docker-compose-ai.yml
