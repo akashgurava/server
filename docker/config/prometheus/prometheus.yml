@@ -6,12 +6,14 @@ scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets:
-        - localhost:9090
+          - localhost:9090
 
-  - job_name: 'cadvisor'
+  - job_name: "cadvisor"
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets:
+          - cadvisor:8080
 
-  - job_name: 'openwrt'
+  - job_name: "asus"
     static_configs:
-      - targets: ['192.168.1.1:9100']
+      - targets:
+          - 192.168.1.1:9184

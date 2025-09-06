@@ -4,12 +4,12 @@ services:
     container_name: open-webui
     networks:
       server_network:
-        ipv4_address: 172.18.0.200
-        ipv6_address: 2001:db8:1::200
+        ipv4_address: 172.18.3.1
+        ipv6_address: 2001:db8:1::301
     ports:
       - 4000:8080
     volumes:
-      - ${OUI_DATA_PATH}:/app/backend/data
+      - ${LCL_OUI_DATA}:/app/backend/data
     environment:
       - 'OLLAMA_BASE_URL=http://host.docker.internal:11434'
       - 'WEBUI_SECRET_KEY=SKZcvTz4IO6IUV'
