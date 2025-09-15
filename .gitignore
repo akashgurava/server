@@ -11,3 +11,4 @@ docker/.cloudflared/*.json
 
 .venv
 __pycache__
+tidal-session-oauth.json
