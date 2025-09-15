@@ -5,3 +5,9 @@ bkp
 # Private key file
 acme.json
 logs
+bin
+docker/.cloudflared/*.pem
+docker/.cloudflared/*.json
+
+.venv
+__pycache__
