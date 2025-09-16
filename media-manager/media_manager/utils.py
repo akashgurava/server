@@ -24,6 +24,9 @@ SUPPORTED_EXTENSIONS = [".flac", ".mp3", ".m4a", ".wav", ".aac", ".ogg", ".wma"]
 
 def normalize_name(name: str) -> str:
     """Normalize a name by converting to lowercase, removing special characters, and standardizing whitespace.
+    
+    This function handles the common case where quotes in track names are replaced with underscores
+    in file names, ensuring proper matching between Tidal API data and local files.
 
     Args:
         name: The name to normalize
@@ -33,6 +36,11 @@ def normalize_name(name: str) -> str:
     """
     name = name.lower()
     name = unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("utf-8")
+    
+    # Replace quotes with underscores first to match file naming conventions
+    # This handles cases like 'Tum Tum (From "Enemy - Tamil")' -> 'Tum Tum (From _Enemy - Tamil_)'
+    name = name.replace('"', '_').replace("'", '_')
+    
     name = re.sub(
         r"[^\w\s\-\(\)]", "", name
     )  # Keep alphanum, whitespace, dash, parentheses
