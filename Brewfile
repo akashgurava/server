@@ -26,3 +26,9 @@ brew "httpie"               # User-friendly HTTP client
 brew "docker"                 # Docker CLI
 brew "docker-compose"         # Compose (v2)
 brew "colima"                 # Lightweight Docker runtime on macOS
+
+# Media Management
+brew "mkvtoolnix"             # Tool to work with MKV files
+brew "ffmpeg"                 # Tool to work with video files
+brew "dovi_tool"              # Tool to work with Dolby Vision files
+brew "mediainfo"              # Tool to work with media files
