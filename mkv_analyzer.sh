@@ -26,6 +26,12 @@ get_resolution() {
     local width=$1
     local height=$2
     
+    # Check if height is a valid number
+    if [[ ! "$height" =~ ^[0-9]+$ ]] || [ -z "$height" ]; then
+        echo "Unknown"
+        return
+    fi
+    
     if [ "$height" -ge 2160 ]; then
         echo "2160p"
     elif [ "$height" -ge 1440 ]; then
@@ -69,7 +75,12 @@ get_dolby_vision() {
     local dv_profile=$1
     
     if [ -n "$dv_profile" ] && [ "$dv_profile" != "null" ]; then
-        echo "Profile $dv_profile"
+        # Check if it's Profile 8.1 (which might show as 81 in some tools)
+        if [ "$dv_profile" = "81" ]; then
+            echo "Profile 8.1"
+        else
+            echo "Profile $dv_profile"
+        fi
     else
         echo "None"
     fi
@@ -107,6 +118,31 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Function to show usage
+show_usage() {
+    echo "MKV Analyzer and Dolby Vision Converter"
+    echo ""
+    echo "Usage:"
+    echo "  $0 [path]                    # Analyze MKV files"
+    echo "  $0 --convert [path]          # Convert Profile 7 to Profile 8"
+    echo "  $0 --test X [path]           # Create X-minute test and convert"
+    echo ""
+    echo "Options:"
+    echo "  --convert                    Convert all Profile 7 files to Profile 8"
+    echo "  --test X                     Create X-minute test files before conversion"
+    echo "  --help                       Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0 /path/to/movies           # Analyze all MKV files"
+    echo "  $0 --convert /path/to/movies # Convert all Profile 7 files"
+    echo "  $0 --test 5 movie.mkv        # Create 5-minute test and convert"
+    echo ""
+    echo "Requirements for conversion:"
+    echo "  - ffmpeg (video processing)"
+    echo "  - dovi_tool (Dolby Vision conversion)"
+    echo "  - mkvtoolnix (MKV creation)"
+}
 
 # Function to colorize resolution
 colorize_resolution() {
@@ -501,7 +537,26 @@ analyze_subtitles() {
 # Function to analyze a single MKV file
 analyze_mkv() {
     local file_path="$1"
-    local abs_path=$(realpath "$file_path")
+    
+    # Check if file exists
+    if [ ! -f "$file_path" ]; then
+        echo "File: $file_path - Error: File does not exist"
+        return
+    fi
+    
+    local abs_path=$(realpath "$file_path" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        abs_path="$file_path"
+    fi
+    
+    # Get file size
+    local file_size=""
+    if [ -f "$file_path" ]; then
+        local size_bytes=$(stat -f%z "$file_path" 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$size_bytes" ]; then
+            file_size=$(format_file_size "$size_bytes")
+        fi
+    fi
     
     # Get video stream info
     local video_info=$(ffprobe -v quiet -select_streams v:0 -print_format json -show_streams "$file_path" 2>/dev/null)
@@ -576,7 +631,11 @@ analyze_mkv() {
     fi
     
     # Print video output with chapters
-    echo -e "File: $abs_path"
+    if [ -n "$file_size" ]; then
+        echo -e "File: $abs_path (${file_size})"
+    else
+        echo -e "File: $abs_path"
+    fi
     echo -e "Resolution: $resolution_colored HDR: $hdr_colored Dolby Vision: $dv_colored Codec: $codec_colored Bitrate: $bitrate_colored Chapters: $chapter_count_colored"
     
     # Process all audio streams
@@ -600,9 +659,189 @@ analyze_mkv() {
     echo ""
 }
 
+# Function to convert Profile 7 to Profile 8
+convert_dv_profile() {
+    local input_file="$1"
+    local test_minutes="$2"
+    local is_test_mode="$3"
+    
+    local base_name=$(basename "$input_file" .mkv)
+    local dir_name=$(dirname "$input_file")
+    local temp_dir="${dir_name}/.dv_conversion_temp"
+    
+    # Create temp directory
+    mkdir -p "$temp_dir"
+    
+    echo -e "${YELLOW}Starting Dolby Vision Profile 7 to Profile 8 conversion...${NC}"
+    
+    # Step 1: Create test file if in test mode
+    local working_file="$input_file"
+    if [ "$is_test_mode" = "true" ]; then
+        local test_file="${temp_dir}/${base_name}_test.mkv"
+        echo -e "${BLUE}Creating ${test_minutes}-minute test file...${NC}"
+        
+        ffmpeg -i "$input_file" -t "${test_minutes}:00" -c copy -map 0 -avoid_negative_ts make_zero "$test_file" -y 2>/dev/null
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error: Failed to create test file${NC}"
+            rm -rf "$temp_dir"
+            return 1
+        fi
+        working_file="$test_file"
+        
+        echo -e "${GREEN}Test file created successfully${NC}"
+    fi
+    
+    # Step 2: Extract video stream
+    local raw_hevc="${temp_dir}/video.hevc"
+    echo -e "${BLUE}Extracting video stream...${NC}"
+    
+    ffmpeg -i "$working_file" -c:v copy -bsf:v hevc_mp4toannexb -f rawvideo "$raw_hevc" -y 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Failed to extract video stream${NC}"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Step 3: Convert DV profile using dovi_tool
+    local converted_hevc="${temp_dir}/video_p8.hevc"
+    echo -e "${BLUE}Converting Dolby Vision Profile 7 to Profile 8...${NC}"
+    
+    # Mode 1: Converts the RPU to be MEL compatible (works with ONN 4K Plus 2025)
+    dovi_tool --mode 1 convert -i "$raw_hevc" -o "$converted_hevc" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: dovi_tool conversion failed${NC}"
+        echo -e "${RED}Make sure dovi_tool is installed and in PATH${NC}"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Step 4: Create new MKV with converted video
+    local suffix=""
+    if [ "$is_test_mode" = "true" ]; then
+        suffix="_test_p8"
+        # Remove any existing _test suffix from base_name to avoid duplication
+        base_name=$(echo "$base_name" | sed 's/_test$//')
+    else
+        suffix="_p8"
+    fi
+    
+    local output_file="${dir_name}/${base_name}${suffix}.mkv"
+    echo -e "${BLUE}Creating final MKV file...${NC}"
+    
+    # Use mkvmerge to combine converted video with original audio/subtitle streams
+    # -D excludes video from working_file
+    # -a 2 keeps only audio track 2 (E-AC-3), excludes TrueHD track 1
+    mkvmerge -o "$output_file" "$converted_hevc" -D -a 2 "$working_file" >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: mkvmerge failed to create final file${NC}"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    echo -e "${GREEN}Conversion completed successfully!${NC}"
+    echo -e "${GREEN}Output file: $output_file${NC}"
+    echo ""
+    
+    # Show comparison stats
+    if [ "$is_test_mode" = "true" ]; then
+        echo -e "${YELLOW}=== COMPARISON: ORIGINAL (${test_minutes}-min test) vs CONVERTED ===${NC}"
+        echo ""
+        echo -e "${BLUE}ORIGINAL (TEST FILE):${NC}"
+        analyze_mkv "$working_file"
+        echo -e "${BLUE}CONVERTED FILE:${NC}"
+        analyze_mkv "$output_file"
+    else
+        echo -e "${YELLOW}=== COMPARISON: ORIGINAL vs CONVERTED ===${NC}"
+        echo ""
+        echo -e "${BLUE}ORIGINAL FILE:${NC}"
+        analyze_mkv "$input_file"
+        echo -e "${BLUE}CONVERTED FILE:${NC}"
+        analyze_mkv "$output_file"
+    fi
+    
+    # Clean up temp files
+    rm -rf "$temp_dir"
+    
+    return 0
+}
+
+# Function to check if file has Profile 7
+has_profile_7() {
+    local file_path="$1"
+    local video_info=$(ffprobe -v quiet -select_streams v:0 -print_format json -show_streams "$file_path" 2>/dev/null)
+    local dv_profile=$(echo "$video_info" | jq -r '.streams[0].side_data_list[]? | select(.side_data_type == "DOVI configuration record") | .dv_profile // empty' 2>/dev/null)
+    
+    if [ "$dv_profile" = "7" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Main script
 main() {
-    local search_path="${1:-.}"
+{{ ... }}
+    local test_minutes=""
+    local is_test_mode=false
+    local convert_mode=false
+    
+    # Show help if no arguments provided
+    if [ $# -eq 0 ]; then
+        show_usage
+        exit 1
+    fi
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            --test)
+                if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+                    test_minutes="$2"
+                    is_test_mode=true
+                    convert_mode=true
+                    shift 2
+                else
+                    echo "Error: --test requires a number of minutes"
+                    echo ""
+                    show_usage
+                    exit 1
+                fi
+                ;;
+            --convert)
+                convert_mode=true
+                shift
+                ;;
+            -*)
+                echo "Error: Unknown option '$1'"
+                echo ""
+                show_usage
+                exit 1
+                ;;
+            *)
+                if [ -z "$search_path" ]; then
+                    search_path="$1"
+                else
+                    echo "Error: Multiple paths specified. Only one path is allowed."
+                    echo ""
+                    show_usage
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Check if path was provided
+    if [ -z "$search_path" ]; then
+        echo "Error: Path is required"
+        echo ""
+        show_usage
+        exit 1
+    fi
     
     # Check if path exists
     if [ ! -e "$search_path" ]; then
@@ -628,21 +867,77 @@ main() {
         exit 1
     fi
     
-    echo "Searching for MKV files in: $(realpath "$search_path")"
-    echo "=================================================="
-    echo ""
+    # Check for conversion tools if in convert mode
+    if [ "$convert_mode" = true ]; then
+        if ! command -v ffmpeg >/dev/null 2>&1; then
+            echo "Error: ffmpeg is not installed or not in PATH (required for conversion)"
+            exit 1
+        fi
+        
+        if ! command -v dovi_tool >/dev/null 2>&1; then
+            echo "Error: dovi_tool is not installed or not in PATH (required for DV conversion)"
+            echo "Please install dovi_tool from: https://github.com/quietvoid/dovi_tool"
+            exit 1
+        fi
+        
+        if ! command -v mkvmerge >/dev/null 2>&1; then
+            echo "Error: mkvmerge is not installed or not in PATH (required for MKV creation)"
+            echo "Please install mkvtoolnix: brew install mkvtoolnix (on macOS)"
+            exit 1
+        fi
+    fi
     
-    # Find and analyze MKV files
-    local count=0
-    while IFS= read -r -d '' file; do
-        analyze_mkv "$file"
-        ((count++))
-    done < <(find "$search_path" -type f -iname "*.mkv" -print0 2>/dev/null)
-    
-    if [ $count -eq 0 ]; then
-        echo "No MKV files found in the specified path."
+    if [ "$convert_mode" = true ]; then
+        echo "Searching for Profile 7 MKV files in: $(realpath "$search_path")"
+        echo "=================================================="
+        echo ""
+        
+        # Find and process MKV files for conversion
+        local count=0
+        local converted_count=0
+        while IFS= read -r -d '' file; do
+            ((count++))
+            
+            if has_profile_7 "$file"; then
+                echo -e "${YELLOW}=== ORIGINAL FILE STATS ===${NC}"
+                analyze_mkv "$file"
+                
+                echo -e "${YELLOW}Found Profile 7 file: $file${NC}"
+                
+                if convert_dv_profile "$file" "$test_minutes" "$is_test_mode"; then
+                    ((converted_count++))
+                else
+                    echo -e "${RED}Conversion failed for: $(basename "$file")${NC}"
+                fi
+                echo "=================================================="
+                echo ""
+            else
+                echo -e "${BLUE}Skipping non-Profile 7 file: $(basename "$file")${NC}"
+            fi
+        done < <(find "$search_path" -type f -iname "*.mkv" -print0 2>/dev/null)
+        
+        if [ $count -eq 0 ]; then
+            echo "No MKV files found in the specified path."
+        else
+            echo "Conversion complete. Found $count MKV file(s), converted $converted_count Profile 7 file(s)."
+        fi
     else
-        echo "Analysis complete. Found $count MKV file(s)."
+        echo "Searching for MKV files in: $(realpath "$search_path")"
+        echo "=================================================="
+        echo ""
+        
+        # Find and analyze MKV files
+        local count=0
+        while IFS= read -r -d '' file; do
+            analyze_mkv "$file"
+            ((count++))
+        done < <(find "$search_path" -type f -iname "*.mkv" -print0 2>/dev/null)
+        
+        if [ $count -eq 0 ]; then
+            echo "No MKV files found in the specified path."
+        else
+            echo "Analysis complete. Found $count MKV file(s)."
+        fi
     fi
 }
 
