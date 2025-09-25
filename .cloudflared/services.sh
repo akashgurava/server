@@ -1,0 +1,1 @@
+brew services start cloudflared --file=${HOME}/Documents/server/.cloudflared/cloudflared.plist

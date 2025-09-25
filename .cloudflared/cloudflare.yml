@@ -1,0 +1,30 @@
+tunnel: 887b28ec-ae51-4b5f-a788-7c955f7d2eb2
+credentials-file: /Users/akash/Documents/server/.cloudflared/887b28ec-ae51-4b5f-a788-7c955f7d2eb2.json
+
+ingress:
+  # Remote Access
+  - hostname: luci.225274.xyz
+    service: http://192.168.1.1:80
+  - hostname: macair.225274.xyz
+    service: ssh://localhost:22
+
+  # Monitoring
+  - hostname: grafana.225274.xyz
+    service: http://192.168.1.2:3000
+
+  # Media
+  - hostname: qbit.225274.xyz
+    service: http://192.168.1.2:8088
+  - hostname: prowlarr.225274.xyz
+    service: http://192.168.1.2:9696
+  - hostname: sonarr.225274.xyz
+    service: http://192.168.1.2:8989
+  - hostname: radarr.225274.xyz
+    service: http://192.168.1.2:7878
+  - hostname: jellyfin.225274.xyz
+    service: http://192.168.1.2:8096
+
+  - hostname: chat.225274.xyz
+    service: http://192.168.1.2:4000
+
+  - service: http_status:404
