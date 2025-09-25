@@ -1,0 +1,57 @@
+services:
+
+  filebrowser:
+    user: 1000:1000
+    image: gtstef/filebrowser:beta-slim
+    container_name: filebrowser
+    hostname: filebrowser
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.2.1
+        ipv6_address: 2001:db8:1::201
+    ports:
+      - "5900:5900"
+    environment:
+      FILEBROWSER_CONFIG: "/home/filebrowser/data/config.yml"
+      FILEBROWSER_ADMIN_PASSWORD: admin
+      USER_ID: 1000
+      GROUP_ID: 1000
+      TZ: ${TZ}
+    volumes:
+      - './config/filebrowser:/home/filebrowser/data'
+      - ${LCL_USER_DOWNLOADS_BASE}:/downloads
+      - ${EXT_MEDIA_BASE}:/media
+      - ${EXT_SEEDBOX_BASE}:/seedbox
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:5900" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  firefox:
+    image: jlesage/firefox
+    container_name: firefox
+    hostname: firefox
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.2.11
+        ipv6_address: 2001:db8:1::211
+    ports:
+      - "5800:5800"
+    volumes:
+      - ${LCL_FIREFOX_CONFIG}:/config
+      - ${LCL_DOWNLOADS_DATA}:/config/Downloads
+    environment:
+      - TZ=${TZ}
+      - USER_ID=1000
+      - GROUP_ID=1000
+      # - KEEP_APP_RUNNING=1
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:5800" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
