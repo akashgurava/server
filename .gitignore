@@ -6,8 +6,12 @@ bkp
 acme.json
 logs
 bin
-docker/.cloudflared/*.pem
-docker/.cloudflared/*.json
+
+.cloudflared/*.pem
+.cloudflared/*.json
+
+docker/config/filebrowser/database.db
+
 
 .venv
 __pycache__
