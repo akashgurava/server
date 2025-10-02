@@ -49,10 +49,11 @@ server:
     
     # Logging
     verbosity: 1
-    log-queries: yes
-    log-replies: yes
-    log-local-actions: yes
-    logfile: ""
+    use-syslog: yes
+    log-queries: no
+    log-replies: no
+    log-local-actions: no
+    log-servfail: yes
     
     # Statistics for Prometheus
     statistics-interval: 0
@@ -90,22 +91,12 @@ view:
     # Local zone for your domain
     local-zone: "__DOMAIN__." transparent
     
-    # Your services - return local IP
-    local-data: "firefox.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "filebrowser.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "traefik.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "qbit.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "sonarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "radarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "prowlarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "bazarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "jellyfin.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "prometheus.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "grafana.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "cadvisor.__DOMAIN__. IN A __LOCAL_IP__"
-    
-    # Wildcard for any other subdomain
+    # Wildcard - all subdomains point to local IP
     local-data: "*.__DOMAIN__. IN A __LOCAL_IP__"
+    
+    # Exceptions: Add specific services here only if they need a different IP
+    # Example:
+    # local-data: "special-service.__DOMAIN__. IN A 192.168.1.100"
 
 # View for Tailscale network
 view:
@@ -115,19 +106,9 @@ view:
     # Local zone for your domain
     local-zone: "__DOMAIN__." transparent
     
-    # Your services - return Tailscale IP
-    local-data: "firefox.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "filebrowser.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "traefik.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "qbit.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "sonarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "radarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "prowlarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "bazarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "jellyfin.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "prometheus.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "grafana.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "cadvisor.__DOMAIN__. IN A __TAILSCALE_IP__"
-    
-    # Wildcard for any other subdomain
+    # Wildcard - all subdomains point to Tailscale IP
     local-data: "*.__DOMAIN__. IN A __TAILSCALE_IP__"
+    
+    # Exceptions: Add specific services here only if they need a different IP
+    # Example:
+    # local-data: "special-service.__DOMAIN__. IN A 100.64.0.10"

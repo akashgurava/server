@@ -276,13 +276,39 @@ sudo /opt/homebrew/sbin/unbound-control flush_zone .
 
 ### View Logs
 
+Unbound uses syslog for logging. View logs with these commands:
+
 ```bash
-# View Unbound logs (syslog)
+# Real-time logs (all levels)
+log stream --predicate 'process == "unbound"' --level info
+
+# Real-time logs (debug mode)
 log stream --predicate 'process == "unbound"' --level debug
 
-# Or check system logs
+# Last hour of logs
 log show --predicate 'process == "unbound"' --last 1h
+
+# Only errors
+log show --predicate 'process == "unbound"' --level error --last 1h
+
+# Only DNS failures (SERVFAIL)
+log show --predicate 'process == "unbound"' --level error --last 1h | grep SERVFAIL
 ```
+
+**Current logging configuration:**
+- `verbosity: 1` - Operational info (errors + warnings)
+- `use-syslog: yes` - Logs to macOS system logs
+- `log-queries: no` - Query logging disabled (for performance)
+- `log-replies: no` - Reply logging disabled (for performance)
+- `log-local-actions: no` - Local action logging disabled
+- `log-servfail: yes` - DNS failures are logged
+
+**To enable debug logging temporarily:**
+1. Edit `/opt/homebrew/etc/unbound/unbound.conf`
+2. Change `verbosity: 1` to `verbosity: 2` (or higher)
+3. Set `log-queries: yes` and `log-replies: yes` if needed
+4. Reload: `sudo /opt/homebrew/sbin/unbound-control reload`
+5. Remember to revert after debugging!
 
 ### Check Status
 
