@@ -40,6 +40,7 @@ if echo "$COLIMA_STATUS" | grep -q "colima is running"; then
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         COLIMA_WAS_RUNNING=true
         echo "Stopping Colima..."
+        brew services stop colima 2>/dev/null || true
         colima stop 2>/dev/null || true
         
         # Wait for Colima to fully stop
