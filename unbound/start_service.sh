@@ -6,6 +6,7 @@ set -e
 
 UNBOUND_BIN="/opt/homebrew/sbin/unbound"
 UNBOUND_CONFIG="/opt/homebrew/etc/unbound/unbound.conf"
+COLIMA_WAS_RUNNING=false
 
 echo "========================================="
 echo "Starting Unbound DNS Server"
@@ -49,6 +50,7 @@ if [ -n "$PORT_CHECK" ]; then
         echo ""
         
         if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+            COLIMA_WAS_RUNNING=true
             echo "Stopping Colima..."
             colima stop 2>/dev/null || lima stop 2>/dev/null || true
             echo "✓ Colima/Lima stopped"
@@ -139,3 +141,24 @@ fi
 echo "========================================="
 echo "Unbound is running!"
 echo "========================================="
+
+# Step 5: Restart Colima if it was running before
+if [ "$COLIMA_WAS_RUNNING" = true ]; then
+    echo ""
+    echo "Step 5: Restarting Colima..."
+    echo "Colima was stopped to free port 53. Starting it back up..."
+    colima start 2>/dev/null || lima start 2>/dev/null || true
+    
+    # Wait for Colima to start
+    sleep 3
+    
+    if colima status &>/dev/null && colima status | grep -q "Running"; then
+        echo "✓ Colima restarted successfully"
+    else
+        echo "⚠️  Colima may not have started properly. Check with: colima status"
+    fi
+    echo ""
+    echo "========================================="
+    echo "Setup complete!"
+    echo "========================================="
+fi
