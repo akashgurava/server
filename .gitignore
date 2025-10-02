@@ -11,7 +11,7 @@ bin
 .cloudflared/*.json
 
 docker/config/filebrowser/database.db
-
+docker/config/traefik/htpasswd
 
 .venv
 __pycache__

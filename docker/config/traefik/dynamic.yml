@@ -1,0 +1,30 @@
+http:
+  routers:
+    traefik-dashboard:
+      rule: "Host(`traefik.225274.xyz`)"
+      service: api@internal
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - dashboard-auth
+        - secure-headers
+
+  middlewares:
+    secure-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+        accessControlMaxAge: 100
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+        referrerPolicy: "same-origin"
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+
+    dashboard-auth:
+      basicAuth:
+        usersFile: /config/htpasswd

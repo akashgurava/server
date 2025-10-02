@@ -10,8 +10,6 @@ services:
       server_network:
         ipv4_address: 172.18.2.1
         ipv6_address: 2001:db8:1::201
-    ports:
-      - "5900:5900"
     environment:
       FILEBROWSER_CONFIG: "/home/filebrowser/data/config.yml"
       FILEBROWSER_ADMIN_PASSWORD: admin
@@ -23,6 +21,13 @@ services:
       - ${LCL_USER_DOWNLOADS_BASE}:/downloads
       - ${EXT_MEDIA_BASE}:/media
       - ${EXT_SEEDBOX_BASE}:/seedbox
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.225274.xyz`)"
+      - "traefik.http.routers.filebrowser.entrypoints=websecure"
+      - "traefik.http.routers.filebrowser.tls=true"
+      - "traefik.http.services.filebrowser.loadbalancer.server.port=5900"
+      - "traefik.http.routers.filebrowser.tls.certresolver=letsencrypt"  # ← Add this
     healthcheck:
       test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:5900" ]
       start_period: 5s
@@ -39,8 +44,6 @@ services:
       server_network:
         ipv4_address: 172.18.2.11
         ipv6_address: 2001:db8:1::211
-    ports:
-      - "5800:5800"
     volumes:
       - ${LCL_FIREFOX_CONFIG}:/config
       - ${LCL_DOWNLOADS_DATA}:/config/Downloads
@@ -49,6 +52,13 @@ services:
       - USER_ID=1000
       - GROUP_ID=1000
       # - KEEP_APP_RUNNING=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.firefox.rule=Host(`firefox.225274.xyz`)"
+      - "traefik.http.routers.firefox.entrypoints=websecure"
+      - "traefik.http.routers.firefox.tls=true"
+      - "traefik.http.services.firefox.loadbalancer.server.port=5800"
+      - "traefik.http.routers.firefox.tls.certresolver=letsencrypt"  # ← Add this
     healthcheck:
       test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:5800" ]
       start_period: 5s
