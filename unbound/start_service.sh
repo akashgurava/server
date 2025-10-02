@@ -29,7 +29,9 @@ fi
 
 # Step 1: Check for Colima/Lima
 echo "Step 1: Checking for Colima/Lima..."
-if colima status &>/dev/null && colima status | grep -q "Running"; then
+COLIMA_STATUS=$(colima status 2>&1 || true)
+
+if echo "$COLIMA_STATUS" | grep -q "colima is running"; then
     echo "⚠️  Colima is currently running"
     echo ""
     read -p "Stop Colima? [Y/n]: " -n 1 -r
@@ -38,9 +40,21 @@ if colima status &>/dev/null && colima status | grep -q "Running"; then
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         COLIMA_WAS_RUNNING=true
         echo "Stopping Colima..."
-        colima stop 2>/dev/null || lima stop 2>/dev/null || true
+        colima stop 2>/dev/null || true
+        
+        # Wait for Colima to fully stop
+        sleep 3
+        
+        # Force kill any remaining Lima/Colima processes on port 53
+        echo "Ensuring all Lima/Colima processes are stopped..."
+        LIMA_PIDS=$(sudo lsof -i :53 -sTCP:LISTEN 2>/dev/null | grep -E 'lima|colima' | awk '{print $2}' | sort -u || true)
+        if [ -n "$LIMA_PIDS" ]; then
+            echo "Terminating remaining Lima/Colima processes..."
+            echo "$LIMA_PIDS" | xargs -I {} sudo kill -9 {} 2>/dev/null || true
+            sleep 2
+        fi
+        
         echo "✓ Colima stopped"
-        sleep 2
     else
         echo "Cannot start Unbound while Colima is running (port 53 conflict)"
         exit 1
@@ -87,24 +101,34 @@ if [ -n "$PORT_CHECK" ]; then
     echo "$PORT_CHECK"
     echo ""
     
-    # Extract process info
-    PROCESS_INFO=$(echo "$PORT_CHECK" | grep -v COMMAND | head -1)
-    PROCESS_NAME=$(echo "$PROCESS_INFO" | awk '{print $1}')
-    PROCESS_PID=$(echo "$PROCESS_INFO" | awk '{print $2}')
-    
-    echo "Process: $PROCESS_NAME (PID: $PROCESS_PID)"
-    echo ""
-    read -p "Terminate process $PROCESS_PID? [y/N]: " -n 1 -r
-    echo ""
-    
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Terminating process $PROCESS_PID..."
-        sudo kill "$PROCESS_PID"
+    # Check if it's Lima/Colima related
+    if echo "$PORT_CHECK" | grep -qE 'lima|colima'; then
+        echo "Detected Lima/Colima processes still using port 53"
+        echo "Force terminating all Lima/Colima processes..."
+        LIMA_PIDS=$(echo "$PORT_CHECK" | grep -E 'lima|colima' | awk '{print $2}' | sort -u)
+        echo "$LIMA_PIDS" | xargs -I {} sudo kill -9 {} 2>/dev/null || true
         sleep 2
-        echo "✓ Process terminated"
+        echo "✓ Processes terminated"
     else
-        echo "Cannot start Unbound while port 53 is in use"
-        exit 1
+        # Extract process info
+        PROCESS_INFO=$(echo "$PORT_CHECK" | grep -v COMMAND | head -1)
+        PROCESS_NAME=$(echo "$PROCESS_INFO" | awk '{print $1}')
+        PROCESS_PID=$(echo "$PROCESS_INFO" | awk '{print $2}')
+        
+        echo "Process: $PROCESS_NAME (PID: $PROCESS_PID)"
+        echo ""
+        read -p "Terminate process $PROCESS_PID? [y/N]: " -n 1 -r
+        echo ""
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "Terminating process $PROCESS_PID..."
+            sudo kill -9 "$PROCESS_PID"
+            sleep 2
+            echo "✓ Process terminated"
+        else
+            echo "Cannot start Unbound while port 53 is in use"
+            exit 1
+        fi
     fi
 else
     echo "✓ Port 53 is available"
@@ -158,12 +182,13 @@ if [ "$COLIMA_WAS_RUNNING" = true ]; then
     echo ""
     echo "Step 6: Restarting Colima..."
     echo "Colima was stopped to free port 53. Starting it back up..."
-    colima start 2>/dev/null || lima start 2>/dev/null || true
+    colima start &>/dev/null || lima start &>/dev/null || true
     
     # Wait for Colima to start
     sleep 3
     
-    if colima status &>/dev/null && colima status | grep -q "Running"; then
+    COLIMA_RESTART_STATUS=$(colima status 2>&1 || true)
+    if echo "$COLIMA_RESTART_STATUS" | grep -q "colima is running"; then
         echo "✓ Colima restarted successfully"
     else
         echo "⚠️  Colima may not have started properly. Check with: colima status"
