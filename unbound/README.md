@@ -1,0 +1,586 @@
+# Unbound DNS Server Setup
+
+Complete setup guide for Unbound DNS server with split DNS, ad blocking, and Prometheus metrics on macOS.
+
+## Overview
+
+This setup provides:
+
+- **Split DNS**: Returns different IPs based on client network (local vs Tailscale)
+- **Ad Blocking**: Optional blocklist support via StevenBlack's hosts
+- **Prometheus Metrics**: Built-in metrics for monitoring
+- **DNSSEC**: Full validation enabled
+- **DNS-over-TLS**: Encrypted upstream queries to Cloudflare
+
+## Current Status
+
+✅ **Working** - Unbound is configured and running
+
+## Network Configuration
+
+### Local Network (192.168.1.0/24)
+
+- Queries from local network return: `192.168.1.2`
+- Example: `firefox.225274.xyz` → `192.168.1.2`
+
+### Tailscale Network (100.64.0.0/10)
+
+- Queries from Tailscale return: `100.64.1.2`
+- Example: `firefox.225274.xyz` → `100.64.1.2`
+
+### Other Networks
+
+- Queries forwarded to Cloudflare DNS over TLS
+
+## Files
+
+```
+unbound/
+├── README.md              # This file
+├── config.env             # Configuration variables (edit this!)
+├── unbound.conf.template  # Configuration template
+├── generate-config.sh     # Script to generate config from template
+├── adblock.conf           # Ad blocking rules (optional)
+└── generate-adblock.sh    # Script to generate ad blocking list
+```
+
+## Installation
+
+### 1. Install Unbound
+
+```bash
+# Install Unbound and Prometheus exporter
+brew install unbound unbound_exporter
+```
+
+### 2. Setup Keys and Trust Anchor
+
+```bash
+# Generate DNSSEC trust anchor
+sudo /opt/homebrew/sbin/unbound-anchor -a /opt/homebrew/etc/unbound/root.key
+
+# Generate control keys (for remote control and Prometheus)
+sudo /opt/homebrew/sbin/unbound-control-setup -d /opt/homebrew/etc/unbound
+```
+
+### 3. Generate Configuration
+
+```bash
+# Edit config.env to set your IPs and domain
+nano config.env
+```
+
+```bash
+# Make script executable
+chmod +x generate-config.sh
+
+# Generate config from template
+./generate-config.sh
+
+# This will create unbound.conf with your variables
+```
+
+### 4. Deploy Configuration
+
+```bash
+# Copy generated config
+sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
+sudo cp adblock.conf /opt/homebrew/etc/unbound/adblock.conf
+
+# Verify configuration
+sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf
+```
+
+### 5. Start Unbound
+
+```bash
+# Start Unbound service
+sudo brew services start unbound
+
+# Verify it's running
+sudo brew services list | grep unbound
+# Should show: unbound started
+
+# Check if listening on port 53
+sudo lsof -i :53
+# Should show unbound process
+```
+
+### 6. Configure System DNS (Optional)
+
+If you want your Mac to use Unbound for all DNS queries:
+
+```bash
+# Set system DNS to use Unbound
+sudo networksetup -setdnsservers Wi-Fi 127.0.0.1
+
+# Verify DNS configuration
+scutil --dns | grep nameserver
+# Should show 127.0.0.1 at the top
+```
+
+## Updating Configuration
+
+When you need to change IPs or domain:
+
+### 1. Edit Variables
+
+```bash
+# Edit config.env
+nano config.env
+
+# Change any values:
+# LOCAL_IP="192.168.1.10"  # New IP
+# TAILSCALE_IP="100.64.1.5"  # New Tailscale IP
+```
+
+### 2. Regenerate Config
+
+```bash
+# Generate new config
+./generate-config.sh
+
+# Output will show:
+# ✓ Generated: unbound.conf
+# ✓ Configuration is valid
+```
+
+### 3. Apply Changes
+
+```bash
+# Copy to Unbound directory
+sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
+
+# Reload Unbound (no restart needed!)
+sudo /opt/homebrew/sbin/unbound-control reload
+
+# Test
+dig @127.0.0.1 firefox.225274.xyz
+```
+
+**That's it!** All your services will now resolve to the new IP.
+
+## Testing
+
+### Test Split DNS
+
+#### From Local Network (192.168.1.x):
+
+```bash
+# Check your current IP
+ifconfig | grep "inet 192.168"
+
+# Test DNS resolution
+dig @127.0.0.1 firefox.225274.xyz
+# Should return: 192.168.1.2
+
+nslookup firefox.225274.xyz
+# Should return: 192.168.1.2
+```
+
+#### From Tailscale Network (100.64.x.x):
+
+```bash
+# Check your Tailscale IP
+ifconfig | grep "inet 100.64"
+
+# Test DNS resolution
+dig @127.0.0.1 firefox.225274.xyz
+# Should return: 100.64.1.2
+
+nslookup firefox.225274.xyz
+# Should return: 100.64.1.2
+```
+
+### Test External DNS
+
+```bash
+# Test external domain resolution
+dig @127.0.0.1 google.com
+# Should resolve normally
+
+# Test DNSSEC validation
+dig @127.0.0.1 dnssec-failed.org
+# Should fail with SERVFAIL
+```
+
+### Test HTTPS Access
+
+```bash
+# From local network
+curl -k https://firefox.225274.xyz
+# Should connect to 192.168.1.2
+
+# From Tailscale
+curl -k https://firefox.225274.xyz
+# Should connect to 100.64.1.2
+```
+
+## Ad Blocking (Optional)
+
+### Generate Ad Blocking List
+
+```bash
+# Make script executable
+chmod +x generate-adblock.sh
+
+# Generate blocklist (downloads ~100k+ domains)
+sudo ./generate-adblock.sh
+
+# Reload Unbound to apply
+sudo /opt/homebrew/sbin/unbound-control reload
+```
+
+### Update Blocklist
+
+```bash
+# Re-run the script periodically (e.g., weekly)
+sudo ./generate-adblock.sh
+sudo /opt/homebrew/sbin/unbound-control reload
+```
+
+### Test Ad Blocking
+
+```bash
+# Test blocked domain
+dig @127.0.0.1 doubleclick.net
+# Should return NXDOMAIN
+```
+
+## Prometheus Monitoring
+
+### Setup Prometheus Exporter
+
+```bash
+# Start unbound_exporter
+brew services start unbound_exporter
+
+# Verify it's running
+curl http://localhost:9167/metrics
+# Should return Prometheus metrics
+```
+
+### Add to Prometheus
+
+Add to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: "unbound"
+    static_configs:
+      - targets: ["localhost:9167"]
+    scrape_interval: 15s
+```
+
+### Available Metrics
+
+- `unbound_queries_total` - Total DNS queries
+- `unbound_cache_hits_total` - Cache hit rate
+- `unbound_response_time_seconds` - Query response time
+- `unbound_memory_bytes` - Memory usage
+- `unbound_up` - Service status
+
+### Grafana Dashboard
+
+Import dashboard ID: **11705** (Unbound Dashboard)
+
+Or create custom panels with the metrics above.
+
+## Management Commands
+
+### View Statistics
+
+```bash
+# Show current stats
+sudo /opt/homebrew/sbin/unbound-control stats_noreset
+
+# Show cache stats
+sudo /opt/homebrew/sbin/unbound-control dump_cache | head -20
+```
+
+### Reload Configuration
+
+```bash
+# After changing unbound.conf
+sudo /opt/homebrew/sbin/unbound-control reload
+```
+
+### Flush Cache
+
+```bash
+# Flush specific domain
+sudo /opt/homebrew/sbin/unbound-control flush firefox.225274.xyz
+
+# Flush all cache
+sudo /opt/homebrew/sbin/unbound-control flush_zone .
+```
+
+### View Logs
+
+```bash
+# View Unbound logs (syslog)
+log stream --predicate 'process == "unbound"' --level debug
+
+# Or check system logs
+log show --predicate 'process == "unbound"' --last 1h
+```
+
+### Restart Unbound
+
+```bash
+# Restart service
+sudo brew services restart unbound
+
+# Check status
+sudo brew services list | grep unbound
+```
+
+## Configuration Customization
+
+### Add More Services
+
+Edit `unbound.conf.template` and add to both views:
+
+```conf
+# In local-view section
+local-data: "newservice.__DOMAIN__. IN A __LOCAL_IP__"
+
+# In tailscale-view section
+local-data: "newservice.__DOMAIN__. IN A __TAILSCALE_IP__"
+```
+
+Then regenerate and apply:
+
+```bash
+./generate-config.sh
+sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
+sudo /opt/homebrew/sbin/unbound-control reload
+```
+
+### Change Upstream DNS
+
+Edit `unbound.conf.template`, find the `forward-zone` section:
+
+```conf
+# Use Google DNS instead
+forward-addr: 8.8.8.8@853#dns.google
+forward-addr: 8.8.4.4@853#dns.google
+
+# Or use Quad9
+forward-addr: 9.9.9.9@853#dns.quad9.net
+forward-addr: 149.112.112.112@853#dns.quad9.net
+```
+
+Then regenerate and apply:
+
+```bash
+./generate-config.sh
+sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
+sudo /opt/homebrew/sbin/unbound-control reload
+```
+
+### Adjust Cache Size
+
+Edit `unbound.conf.template`:
+
+```conf
+msg-cache-size: 100m      # Increase from 50m
+rrset-cache-size: 200m    # Increase from 100m
+```
+
+Then regenerate and apply.
+
+### Adjust Logging
+
+Edit `unbound.conf.template`:
+
+```conf
+verbosity: 2              # Increase from 1 (more verbose)
+log-queries: no           # Disable query logging
+log-replies: no           # Disable reply logging
+```
+
+Then regenerate and apply.
+
+## Troubleshooting
+
+### Unbound won't start
+
+```bash
+# Check config syntax
+sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf
+
+# Check if port 53 is in use
+sudo lsof -i :53
+
+# Check logs
+log show --predicate 'process == "unbound"' --last 5m
+```
+
+### DNS not resolving
+
+```bash
+# Check if Unbound is running
+sudo brew services list | grep unbound
+
+# Check if system is using correct DNS
+scutil --dns | grep nameserver
+
+# Test directly
+dig @127.0.0.1 google.com
+
+# Flush DNS cache
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
+### Split DNS not working
+
+```bash
+# Check your current IP
+ifconfig | grep "inet "
+
+# Verify you're in the correct subnet
+# Local: 192.168.1.x
+# Tailscale: 100.64.x.x
+
+# Test with explicit server
+dig @127.0.0.1 firefox.225274.xyz
+
+# Check Unbound logs for view selection
+log stream --predicate 'process == "unbound"' --level debug | grep view
+```
+
+### Prometheus exporter not working
+
+```bash
+# Check if remote-control is enabled
+sudo /opt/homebrew/sbin/unbound-control status
+
+# Check exporter status
+brew services list | grep unbound_exporter
+
+# Test metrics endpoint
+curl http://localhost:9167/metrics
+
+# Restart exporter
+brew services restart unbound_exporter
+```
+
+### Permission errors
+
+```bash
+# Fix permissions on config files
+sudo chown root:wheel /opt/homebrew/etc/unbound/unbound.conf
+sudo chmod 644 /opt/homebrew/etc/unbound/unbound.conf
+
+# Fix permissions on key files
+sudo chmod 600 /opt/homebrew/etc/unbound/unbound_*.key
+sudo chmod 644 /opt/homebrew/etc/unbound/unbound_*.pem
+```
+
+## Performance Tuning
+
+For better performance on your Mac:
+
+```conf
+# Edit /opt/homebrew/etc/unbound/unbound.conf
+
+# Adjust threads based on CPU cores (M1 has 8 cores)
+num-threads: 4
+
+# Increase cache
+msg-cache-size: 100m
+rrset-cache-size: 200m
+
+# Enable prefetching
+prefetch: yes
+prefetch-key: yes
+
+# Adjust TTL
+cache-min-ttl: 300
+cache-max-ttl: 86400
+```
+
+## Maintenance
+
+### Weekly Tasks
+
+```bash
+# Update ad blocking list
+sudo ./generate-adblock.sh
+sudo /opt/homebrew/sbin/unbound-control reload
+```
+
+### Monthly Tasks
+
+```bash
+# Update Unbound
+brew upgrade unbound unbound_exporter
+
+# Restart services
+sudo brew services restart unbound
+brew services restart unbound_exporter
+```
+
+### Backup Configuration
+
+```bash
+# Backup config files
+sudo cp /opt/homebrew/etc/unbound/unbound.conf ~/unbound.conf.backup
+sudo cp /opt/homebrew/etc/unbound/adblock.conf ~/adblock.conf.backup
+
+# Backup keys
+sudo cp /opt/homebrew/etc/unbound/unbound_*.{key,pem} ~/
+```
+
+## Uninstall
+
+```bash
+# Stop services
+sudo brew services stop unbound
+brew services stop unbound_exporter
+
+# Remove DNS configuration
+sudo networksetup -setdnsservers Wi-Fi Empty
+
+# Uninstall packages
+brew uninstall unbound unbound_exporter
+
+# Remove config files (optional)
+sudo rm -rf /opt/homebrew/etc/unbound
+```
+
+## File Locations
+
+- **Config**: `/opt/homebrew/etc/unbound/unbound.conf`
+- **Ad Blocking**: `/opt/homebrew/etc/unbound/adblock.conf`
+- **Trust Anchor**: `/opt/homebrew/etc/unbound/root.key`
+- **Control Keys**: `/opt/homebrew/etc/unbound/unbound_*.{key,pem}`
+- **Binary**: `/opt/homebrew/sbin/unbound`
+- **Logs**: System logs (view with `log stream`)
+
+## Useful Links
+
+- [Unbound Documentation](https://nlnetlabs.nl/documentation/unbound/)
+- [Unbound Configuration Reference](https://nlnetlabs.nl/documentation/unbound/unbound.conf/)
+- [StevenBlack Hosts](https://github.com/StevenBlack/hosts)
+- [Unbound Exporter](https://github.com/letsencrypt/unbound_exporter)
+- [Grafana Dashboard 11705](https://grafana.com/grafana/dashboards/11705)
+
+## Next Steps
+
+Now that Unbound is working:
+
+1. ✅ DNS server with split DNS configured
+2. ⏭️ Configure Traefik improvements
+3. ⏭️ Set up authentication (Authelia/Authentik)
+4. ⏭️ Add monitoring dashboards in Grafana
+
+## Support
+
+For issues or questions:
+
+- Check the troubleshooting section above
+- Review Unbound logs: `log stream --predicate 'process == "unbound"'`
+- Test configuration: `sudo /opt/homebrew/sbin/unbound-checkconf`

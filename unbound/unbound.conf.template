@@ -1,0 +1,134 @@
+# Unbound Configuration Template
+# Use generate-config.sh to generate actual config
+
+server:
+    # Run as current user (macOS doesn't have unbound user)
+    username: ""
+    
+    # Disable chroot on macOS
+    chroot: ""
+    
+    # Network settings
+    interface: 0.0.0.0
+    port: 53
+    do-ip4: yes
+    do-ip6: yes
+    do-udp: yes
+    do-tcp: yes
+    
+    # Access control - allow local and Tailscale networks
+    access-control: 0.0.0.0/0 refuse
+    access-control: 127.0.0.0/8 allow
+    access-control: __LOCAL_SUBNET__ allow
+    access-control: __TAILSCALE_SUBNET__ allow
+    
+    # Assign views based on client IP
+    access-control-view: __LOCAL_SUBNET__ "local-view"
+    access-control-view: __TAILSCALE_SUBNET__ "tailscale-view"
+    
+    # Performance tuning
+    num-threads: 4
+    msg-cache-slabs: 8
+    rrset-cache-slabs: 8
+    infra-cache-slabs: 8
+    key-cache-slabs: 8
+    
+    # Cache settings
+    cache-min-ttl: 300
+    cache-max-ttl: 86400
+    msg-cache-size: 50m
+    rrset-cache-size: 100m
+    
+    # Privacy settings
+    hide-identity: yes
+    hide-version: yes
+    qname-minimisation: yes
+    
+    # DNSSEC
+    auto-trust-anchor-file: "/opt/homebrew/etc/unbound/root.key"
+    
+    # Logging
+    verbosity: 1
+    log-queries: yes
+    log-replies: yes
+    log-local-actions: yes
+    logfile: ""
+    
+    # Statistics for Prometheus
+    statistics-interval: 0
+    extended-statistics: yes
+    statistics-cumulative: yes
+    
+    # Prefetching
+    prefetch: yes
+    prefetch-key: yes
+    
+    # Include ad blocking lists
+    include: "/opt/homebrew/etc/unbound/adblock.conf"
+
+# Remote control (for unbound-control and prometheus exporter)
+remote-control:
+    control-enable: yes
+    control-interface: 127.0.0.1
+    control-port: 8953
+    server-key-file: "/opt/homebrew/etc/unbound/unbound_server.key"
+    server-cert-file: "/opt/homebrew/etc/unbound/unbound_server.pem"
+    control-key-file: "/opt/homebrew/etc/unbound/unbound_control.key"
+    control-cert-file: "/opt/homebrew/etc/unbound/unbound_control.pem"
+
+# Forward everything else to Cloudflare (for non-view queries)
+forward-zone:
+    name: "."
+    forward-tls-upstream: yes
+    forward-addr: 1.1.1.1@853#cloudflare-dns.com
+    forward-addr: 1.0.0.1@853#cloudflare-dns.com
+
+# View for local network
+view:
+    name: "local-view"
+    view-first: yes
+    
+    # Local zone for your domain
+    local-zone: "__DOMAIN__." transparent
+    
+    # Your services - return local IP
+    local-data: "firefox.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "filebrowser.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "traefik.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "qbit.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "sonarr.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "radarr.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "prowlarr.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "bazarr.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "jellyfin.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "prometheus.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "grafana.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "cadvisor.__DOMAIN__. IN A __LOCAL_IP__"
+    
+    # Wildcard for any other subdomain
+    local-data: "*.__DOMAIN__. IN A __LOCAL_IP__"
+
+# View for Tailscale network
+view:
+    name: "tailscale-view"
+    view-first: yes
+    
+    # Local zone for your domain
+    local-zone: "__DOMAIN__." transparent
+    
+    # Your services - return Tailscale IP
+    local-data: "firefox.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "filebrowser.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "traefik.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "qbit.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "sonarr.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "radarr.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "prowlarr.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "bazarr.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "jellyfin.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "prometheus.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "grafana.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "cadvisor.__DOMAIN__. IN A __TAILSCALE_IP__"
+    
+    # Wildcard for any other subdomain
+    local-data: "*.__DOMAIN__. IN A __TAILSCALE_IP__"
