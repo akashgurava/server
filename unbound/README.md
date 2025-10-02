@@ -38,59 +38,51 @@ unbound/
 ├── README.md              # This file
 ├── config.env             # Configuration variables (edit this!)
 ├── unbound.conf.template  # Configuration template
-├── generate-config.sh     # Script to generate config from template
+├── setup.sh               # Main setup script (installs, configures, deploys)
 ├── adblock.conf           # Ad blocking rules (optional)
-└── generate-adblock.sh    # Script to generate ad blocking list
+└── .gitignore             # Excludes generated files
 ```
 
 ## Installation
 
-### 1. Install Unbound
+### 1. Configure Variables
+
+Edit `config.env` to set your IPs and domain:
 
 ```bash
-# Install Unbound
-brew install unbound
-```
-
-### 2. Setup Keys and Trust Anchor
-
-```bash
-# Generate DNSSEC trust anchor
-sudo /opt/homebrew/sbin/unbound-anchor -a /opt/homebrew/etc/unbound/root.key
-
-# Generate control keys (for remote control)
-sudo /opt/homebrew/sbin/unbound-control-setup -d /opt/homebrew/etc/unbound
-```
-
-### 3. Generate Configuration
-
-```bash
-# Edit config.env to set your IPs and domain
 nano config.env
 ```
 
+Set these values:
+```bash
+DOMAIN="225274.xyz"
+LOCAL_SUBNET="192.168.1.0/24"
+LOCAL_IP="192.168.1.2"
+TAILSCALE_SUBNET="100.64.0.0/10"
+TAILSCALE_IP="100.64.1.2"
+```
+
+### 2. Run Setup Script
+
+The setup script will:
+- Install Unbound (if not installed)
+- Generate DNSSEC trust anchor and control keys
+- Generate configuration from template
+- Deploy configuration
+- Verify configuration
+
 ```bash
 # Make script executable
-chmod +x generate-config.sh
+chmod +x setup.sh
 
-# Generate config from template
-./generate-config.sh
+# Run setup (without ad blocking)
+./setup.sh
 
-# This will create unbound.conf with your variables
+# Or run with ad blocking enabled
+./setup.sh --adblock
 ```
 
-### 4. Deploy Configuration
-
-```bash
-# Copy generated config
-sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
-sudo cp adblock.conf /opt/homebrew/etc/unbound/adblock.conf
-
-# Verify configuration
-sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf
-```
-
-### 5. Start Unbound
+### 3. Start Unbound
 
 ```bash
 # Start Unbound service
@@ -103,19 +95,6 @@ sudo brew services list | grep unbound
 # Check if listening on port 53
 sudo lsof -i :53
 # Should show unbound process
-```
-
-### 6. Configure System DNS (Optional)
-
-If you want your Mac to use Unbound for all DNS queries:
-
-```bash
-# Set system DNS to use Unbound
-sudo networksetup -setdnsservers Wi-Fi 127.0.0.1
-
-# Verify DNS configuration
-scutil --dns | grep nameserver
-# Should show 127.0.0.1 at the top
 ```
 
 ## Updating Configuration
@@ -133,23 +112,19 @@ nano config.env
 # TAILSCALE_IP="100.64.1.5"  # New Tailscale IP
 ```
 
-### 2. Regenerate Config
+### 2. Re-run Setup
 
 ```bash
-# Generate new config
-./generate-config.sh
+# Re-run setup script (skips installation if already installed)
+./setup.sh
 
-# Output will show:
-# ✓ Generated: unbound.conf
-# ✓ Configuration is valid
+# Or with ad blocking
+./setup.sh --adblock
 ```
 
-### 3. Apply Changes
+### 3. Reload Unbound
 
 ```bash
-# Copy to Unbound directory
-sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
-
 # Reload Unbound (no restart needed!)
 sudo /opt/homebrew/sbin/unbound-control reload
 
@@ -215,26 +190,26 @@ curl -k https://firefox.225274.xyz
 # Should connect to 100.64.1.2
 ```
 
-## Ad Blocking (Optional)
+## Ad Blocking
 
-### Generate Ad Blocking List
+Ad blocking is optional and can be enabled during setup.
+
+### Enable Ad Blocking
 
 ```bash
-# Make script executable
-chmod +x generate-adblock.sh
+# Run setup with --adblock flag
+./setup.sh --adblock
 
-# Generate blocklist (downloads ~100k+ domains)
-sudo ./generate-adblock.sh
-
-# Reload Unbound to apply
-sudo /opt/homebrew/sbin/unbound-control reload
+# This will download ~100k+ domains from StevenBlack's hosts
 ```
 
 ### Update Blocklist
 
 ```bash
-# Re-run the script periodically (e.g., weekly)
-sudo ./generate-adblock.sh
+# Re-run setup with --adblock to update the list
+./setup.sh --adblock
+
+# Reload Unbound
 sudo /opt/homebrew/sbin/unbound-control reload
 ```
 
@@ -245,7 +220,6 @@ sudo /opt/homebrew/sbin/unbound-control reload
 dig @127.0.0.1 doubleclick.net
 # Should return NXDOMAIN
 ```
-
 
 ## Management Commands
 
@@ -313,8 +287,7 @@ local-data: "newservice.__DOMAIN__. IN A __TAILSCALE_IP__"
 Then regenerate and apply:
 
 ```bash
-./generate-config.sh
-sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
+./setup.sh
 sudo /opt/homebrew/sbin/unbound-control reload
 ```
 
@@ -335,8 +308,7 @@ forward-addr: 149.112.112.112@853#dns.quad9.net
 Then regenerate and apply:
 
 ```bash
-./generate-config.sh
-sudo cp unbound.conf /opt/homebrew/etc/unbound/unbound.conf
+./setup.sh
 sudo /opt/homebrew/sbin/unbound-control reload
 ```
 
@@ -412,7 +384,6 @@ dig @127.0.0.1 firefox.225274.xyz
 log stream --predicate 'process == "unbound"' --level debug | grep view
 ```
 
-
 ### Permission errors
 
 ```bash
@@ -453,8 +424,8 @@ cache-max-ttl: 86400
 ### Weekly Tasks
 
 ```bash
-# Update ad blocking list
-sudo ./generate-adblock.sh
+# Update ad blocking list (if using ad blocking)
+./setup.sh --adblock
 sudo /opt/homebrew/sbin/unbound-control reload
 ```
 
