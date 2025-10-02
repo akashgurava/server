@@ -79,9 +79,8 @@ remote-control:
 # Forward everything else to Cloudflare (for non-view queries)
 forward-zone:
     name: "."
-    forward-tls-upstream: yes
-    forward-addr: 1.1.1.1@853#cloudflare-dns.com
-    forward-addr: 1.0.0.1@853#cloudflare-dns.com
+    forward-addr: 1.1.1.1
+    forward-addr: 1.0.0.1
 
 # View for local network
 view:

@@ -1,6 +1,6 @@
 # Unbound DNS Server Setup
 
-Complete setup guide for Unbound DNS server with split DNS, ad blocking, and Prometheus metrics on macOS.
+Complete setup guide for Unbound DNS server with split DNS and ad blocking on macOS.
 
 ## Overview
 
@@ -8,9 +8,8 @@ This setup provides:
 
 - **Split DNS**: Returns different IPs based on client network (local vs Tailscale)
 - **Ad Blocking**: Optional blocklist support via StevenBlack's hosts
-- **Prometheus Metrics**: Built-in metrics for monitoring
 - **DNSSEC**: Full validation enabled
-- **DNS-over-TLS**: Encrypted upstream queries to Cloudflare
+- **DNS Forwarding**: Queries forwarded to Cloudflare DNS
 
 ## Current Status
 
@@ -49,8 +48,8 @@ unbound/
 ### 1. Install Unbound
 
 ```bash
-# Install Unbound and Prometheus exporter
-brew install unbound unbound_exporter
+# Install Unbound
+brew install unbound
 ```
 
 ### 2. Setup Keys and Trust Anchor
@@ -59,7 +58,7 @@ brew install unbound unbound_exporter
 # Generate DNSSEC trust anchor
 sudo /opt/homebrew/sbin/unbound-anchor -a /opt/homebrew/etc/unbound/root.key
 
-# Generate control keys (for remote control and Prometheus)
+# Generate control keys (for remote control)
 sudo /opt/homebrew/sbin/unbound-control-setup -d /opt/homebrew/etc/unbound
 ```
 
@@ -247,44 +246,6 @@ dig @127.0.0.1 doubleclick.net
 # Should return NXDOMAIN
 ```
 
-## Prometheus Monitoring
-
-### Setup Prometheus Exporter
-
-```bash
-# Start unbound_exporter
-brew services start unbound_exporter
-
-# Verify it's running
-curl http://localhost:9167/metrics
-# Should return Prometheus metrics
-```
-
-### Add to Prometheus
-
-Add to your `prometheus.yml`:
-
-```yaml
-scrape_configs:
-  - job_name: "unbound"
-    static_configs:
-      - targets: ["localhost:9167"]
-    scrape_interval: 15s
-```
-
-### Available Metrics
-
-- `unbound_queries_total` - Total DNS queries
-- `unbound_cache_hits_total` - Cache hit rate
-- `unbound_response_time_seconds` - Query response time
-- `unbound_memory_bytes` - Memory usage
-- `unbound_up` - Service status
-
-### Grafana Dashboard
-
-Import dashboard ID: **11705** (Unbound Dashboard)
-
-Or create custom panels with the metrics above.
 
 ## Management Commands
 
@@ -451,21 +412,6 @@ dig @127.0.0.1 firefox.225274.xyz
 log stream --predicate 'process == "unbound"' --level debug | grep view
 ```
 
-### Prometheus exporter not working
-
-```bash
-# Check if remote-control is enabled
-sudo /opt/homebrew/sbin/unbound-control status
-
-# Check exporter status
-brew services list | grep unbound_exporter
-
-# Test metrics endpoint
-curl http://localhost:9167/metrics
-
-# Restart exporter
-brew services restart unbound_exporter
-```
 
 ### Permission errors
 
@@ -516,11 +462,10 @@ sudo /opt/homebrew/sbin/unbound-control reload
 
 ```bash
 # Update Unbound
-brew upgrade unbound unbound_exporter
+brew upgrade unbound
 
-# Restart services
+# Restart service
 sudo brew services restart unbound
-brew services restart unbound_exporter
 ```
 
 ### Backup Configuration
@@ -537,15 +482,14 @@ sudo cp /opt/homebrew/etc/unbound/unbound_*.{key,pem} ~/
 ## Uninstall
 
 ```bash
-# Stop services
+# Stop service
 sudo brew services stop unbound
-brew services stop unbound_exporter
 
 # Remove DNS configuration
 sudo networksetup -setdnsservers Wi-Fi Empty
 
-# Uninstall packages
-brew uninstall unbound unbound_exporter
+# Uninstall package
+brew uninstall unbound
 
 # Remove config files (optional)
 sudo rm -rf /opt/homebrew/etc/unbound
@@ -565,8 +509,6 @@ sudo rm -rf /opt/homebrew/etc/unbound
 - [Unbound Documentation](https://nlnetlabs.nl/documentation/unbound/)
 - [Unbound Configuration Reference](https://nlnetlabs.nl/documentation/unbound/unbound.conf/)
 - [StevenBlack Hosts](https://github.com/StevenBlack/hosts)
-- [Unbound Exporter](https://github.com/letsencrypt/unbound_exporter)
-- [Grafana Dashboard 11705](https://grafana.com/grafana/dashboards/11705)
 
 ## Next Steps
 
@@ -575,7 +517,6 @@ Now that Unbound is working:
 1. ✅ DNS server with split DNS configured
 2. ⏭️ Configure Traefik improvements
 3. ⏭️ Set up authentication (Authelia/Authentik)
-4. ⏭️ Add monitoring dashboards in Grafana
 
 ## Support
 
