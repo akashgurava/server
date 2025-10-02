@@ -39,6 +39,8 @@ unbound/
 ├── config.env             # Configuration variables (edit this!)
 ├── unbound.conf.template  # Configuration template
 ├── setup.sh               # Main setup script (installs, configures, deploys)
+├── start_service.sh       # Start Unbound (handles port 53 conflicts)
+├── stop_service.sh        # Stop Unbound
 ├── adblock.conf           # Ad blocking rules (optional)
 └── .gitignore             # Excludes generated files
 ```
@@ -85,17 +87,20 @@ chmod +x setup.sh
 ### 3. Start Unbound
 
 ```bash
-# Start Unbound service
-sudo brew services start unbound
+# Make start script executable
+chmod +x start_service.sh
 
-# Verify it's running
-sudo brew services list | grep unbound
-# Should show: unbound started
+# Start Unbound (handles port 53 conflicts automatically)
+./start_service.sh
 
-# Check if listening on port 53
-sudo lsof -i :53
-# Should show unbound process
+# The script will:
+# - Check if port 53 is in use
+# - Offer to stop Colima/Lima if detected
+# - Validate configuration
+# - Start Unbound
 ```
+
+**Note**: We don't use `brew services` because it conflicts with Colima on port 53.
 
 ## Updating Configuration
 
@@ -122,11 +127,14 @@ nano config.env
 ./setup.sh --adblock
 ```
 
-### 3. Reload Unbound
+### 3. Apply Changes
 
 ```bash
-# Reload Unbound (no restart needed!)
-sudo /opt/homebrew/sbin/unbound-control reload
+# Stop Unbound
+./stop_service.sh
+
+# Start Unbound with new config
+./start_service.sh
 
 # Test
 dig @127.0.0.1 firefox.225274.xyz
@@ -209,8 +217,8 @@ Ad blocking is optional and can be enabled during setup.
 # Re-run setup with --adblock to update the list
 ./setup.sh --adblock
 
-# Reload Unbound
-sudo /opt/homebrew/sbin/unbound-control reload
+# Restart Unbound
+./stop_service.sh && ./start_service.sh
 ```
 
 ### Test Ad Blocking
@@ -222,6 +230,19 @@ dig @127.0.0.1 doubleclick.net
 ```
 
 ## Management Commands
+
+### Start/Stop Unbound
+
+```bash
+# Start Unbound
+./start_service.sh
+
+# Stop Unbound
+./stop_service.sh
+
+# Restart Unbound
+./stop_service.sh && ./start_service.sh
+```
 
 ### View Statistics
 
@@ -236,8 +257,11 @@ sudo /opt/homebrew/sbin/unbound-control dump_cache | head -20
 ### Reload Configuration
 
 ```bash
-# After changing unbound.conf
+# After changing unbound.conf (if Unbound is running)
 sudo /opt/homebrew/sbin/unbound-control reload
+
+# Or restart
+./stop_service.sh && ./start_service.sh
 ```
 
 ### Flush Cache
@@ -260,14 +284,14 @@ log stream --predicate 'process == "unbound"' --level debug
 log show --predicate 'process == "unbound"' --last 1h
 ```
 
-### Restart Unbound
+### Check Status
 
 ```bash
-# Restart service
-sudo brew services restart unbound
+# Check if Unbound is running
+pgrep -x unbound
 
-# Check status
-sudo brew services list | grep unbound
+# Check what's using port 53
+sudo lsof -i :53
 ```
 
 ## Configuration Customization
@@ -340,6 +364,10 @@ Then regenerate and apply.
 ### Unbound won't start
 
 ```bash
+# Use the start script (it handles port conflicts)
+./start_service.sh
+
+# Or manually check:
 # Check config syntax
 sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf
 
@@ -347,13 +375,12 @@ sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf
 sudo lsof -i :53
 
 # Check logs
-log show --predicate 'process == "unbound"' --last 5m
+log stream --predicate 'process == "unbound"' --last 5m
 ```
-
 ### DNS not resolving
 
 ```bash
-# Check if Unbound is running
+{{ ... }}
 sudo brew services list | grep unbound
 
 # Check if system is using correct DNS
@@ -426,7 +453,7 @@ cache-max-ttl: 86400
 ```bash
 # Update ad blocking list (if using ad blocking)
 ./setup.sh --adblock
-sudo /opt/homebrew/sbin/unbound-control reload
+./stop_service.sh && ./start_service.sh
 ```
 
 ### Monthly Tasks
@@ -436,7 +463,7 @@ sudo /opt/homebrew/sbin/unbound-control reload
 brew upgrade unbound
 
 # Restart service
-sudo brew services restart unbound
+./stop_service.sh && ./start_service.sh
 ```
 
 ### Backup Configuration
@@ -453,11 +480,8 @@ sudo cp /opt/homebrew/etc/unbound/unbound_*.{key,pem} ~/
 ## Uninstall
 
 ```bash
-# Stop service
-sudo brew services stop unbound
-
-# Remove DNS configuration
-sudo networksetup -setdnsservers Wi-Fi Empty
+# Stop Unbound
+./stop_service.sh
 
 # Uninstall package
 brew uninstall unbound
