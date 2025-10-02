@@ -2,17 +2,6 @@
 data
 .env
 bkp
-# Private key file
-acme.json
+
 logs
 bin
-
-.cloudflared/*.pem
-.cloudflared/*.json
-
-docker/config/filebrowser/database.db
-docker/config/traefik/htpasswd
-
-.venv
-__pycache__
-tidal-session-oauth.json

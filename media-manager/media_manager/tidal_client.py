@@ -3,9 +3,11 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime
+from collections import Counter
 
 import tidalapi
 import shutil
+from mutagen import File as MutagenFile
 
 from media_manager.errors import (
     MediaManagerError,
@@ -62,19 +64,23 @@ class Track:
     def __str__(self) -> str:
         return f"Track(position={self.position}, name={self.name}, artists={self.artists}, album={self.album})"
 
+    def __repr__(self) -> str:
+        return self.__str__()
 
 class PlaylistMatch:
     """Represents a match between a playlist track and a local file."""
 
-    def __init__(self, track: "Track", local_file: Path) -> None:
+    def __init__(self, track: "Track", local_file: Path, consolidated_album_artist: str) -> None:
         """Initialize playlist match.
 
         Args:
             track: The Track object from the playlist
             local_file: Path to the matching local file
+            consolidated_album_artist: Pre-calculated consolidated album artist for this album
         """
         self.track = track
         self.local_file = local_file
+        self.consolidated_album_artist = consolidated_album_artist
 
     def move_or_copy(
         self,
@@ -125,7 +131,7 @@ class PlaylistMatch:
                     shutil.move(str(self.local_file), str(destination))
                 else:
                     shutil.copy2(str(self.local_file), str(destination))
-                LOGGER.info(
+                LOGGER.debug(
                     f"{'Moved' if move else 'Copied'} playlist position {self.track.position + 1}: {self.local_file} -> {destination}"
                 )
             except Exception as e:
@@ -149,8 +155,8 @@ class PlaylistMatch:
         # Get file extension from original file
         file_ext = self.local_file.suffix
 
-        # Sanitize names for filesystem safety
-        album_artist = sanitize_filename(self.track.album_artist.name)
+        # Use the pre-calculated consolidated album artist
+        album_artist = sanitize_filename(self.consolidated_album_artist)
         album_name = sanitize_filename(self.track.album_name)
         track_name = sanitize_filename(self.track.name)
         artists_str = sanitize_filename(", ".join(self.track.artists))
@@ -162,6 +168,7 @@ class PlaylistMatch:
 
         # Build full path: destination/album_artist/album/filename
         return base_destination / album_artist / album_name / filename
+
 
 
 class Playlist:
@@ -220,9 +227,85 @@ class Playlist:
 
         self.popularity = playlist.popularity
         self.promoted_artists = playlist.promoted_artists
+        
+        # Build consolidated album artist mapping
+        self._album_artist_map = self._build_album_artist_map()
 
     def __str__(self) -> str:
         return f"Playlist(id={self.id}, name={self.name}, tracks={len(self.tracks)})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def _build_album_artist_map(self) -> Dict[str, str]:
+        """Build a mapping of album_id -> consolidated_album_artist using frequency analysis.
+        
+        Returns:
+            Dictionary mapping album IDs to their consolidated album artist names
+        """
+        # Group tracks by album ID
+        album_tracks: Dict[str, List[Track]] = {}
+        for track in self.tracks:
+            album_id = track.album.id
+            if album_id not in album_tracks:
+                album_tracks[album_id] = []
+            album_tracks[album_id].append(track)
+        
+        album_artist_map = {}
+        
+        for album_id, tracks in album_tracks.items():
+            consolidated_artist = self._get_consolidated_album_artist(tracks)
+            album_artist_map[album_id] = consolidated_artist
+            
+            # Log when we have multiple artists for visibility
+            unique_artists = set()
+            for track in tracks:
+                unique_artists.update(track.artists)
+            
+            if len(unique_artists) > 1:
+                LOGGER.info(f"Album '{tracks[0].album_name}' has {len(unique_artists)} unique artists, using '{consolidated_artist}' as folder name")
+        
+        return album_artist_map
+    
+    def _get_consolidated_album_artist(self, tracks: List[Track]) -> str:
+        """Determine the best album artist for a group of tracks from the same album.
+        
+        Args:
+            tracks: List of tracks from the same album
+            
+        Returns:
+            Consolidated album artist name
+        """
+        if not tracks:
+            return "Unknown Artist"
+        
+        # Count frequency of each artist across all tracks in the album
+        artist_counter = Counter()
+        for track in tracks:
+            for artist in track.artists:
+                artist_counter[artist] += 1
+        
+        # Get the most frequent artist(s)
+        if artist_counter:
+            most_common = artist_counter.most_common()
+            max_count = most_common[0][1]
+            
+            # Get all artists with the maximum frequency
+            top_artists = [artist for artist, count in most_common if count == max_count]
+            
+            if len(top_artists) == 1:
+                return top_artists[0]
+            else:
+                # Multiple artists tied for most frequent
+                # Check if we should use "Various Artists"
+                if len(top_artists) > 2:
+                    return "Various Artists"
+                else:
+                    # For 2 tied artists, combine with &
+                    return " & ".join(sorted(top_artists))
+        
+        # Fallback to first track's album artist from Tidal
+        return tracks[0].album_artist.name
 
     def get_track_artist_map(self) -> Dict[str, Track]:
         """Get a mapping of track names to Track objects from the playlist."""
@@ -288,8 +371,10 @@ class Playlist:
                     break
 
             if matched_file:
+                # Get consolidated album artist for this track's album
+                consolidated_album_artist = self._album_artist_map.get(track.album.id, track.album_artist.name)
                 # Create PlaylistMatch for successful match
-                matches.append(PlaylistMatch(track, matched_file))
+                matches.append(PlaylistMatch(track, matched_file, consolidated_album_artist))
             else:
                 local_artists = [artist for artist, _ in local_entries]
                 artist_mismatches.append(

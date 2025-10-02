@@ -1,0 +1,8 @@
+.venv
+.ipynb_checkpoints
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+tidal-session-oauth.json
