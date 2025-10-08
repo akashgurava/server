@@ -5,6 +5,19 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source the library file to use its functions
+# Assumes lib.sh is in the same directory.
+source "$SCRIPT_DIR/lib.sh"
+
+# --- Root Privilege Check ---
+# Ensure the script is run as root, as many operations require sudo.
+if ! is_running_as_root; then
+    echo "Error: This script must be run with root privileges." >&2
+    echo "Please try again using 'sudo ./setup.sh'" >&2
+    exit 1
+fi
+
 TEMPLATE_FILE="$SCRIPT_DIR/unbound.conf.template"
 CONFIG_FILE="$SCRIPT_DIR/unbound.conf"
 ENV_FILE="$SCRIPT_DIR/config.env"
@@ -42,8 +55,14 @@ else
 fi
 echo ""
 
-# Step 2: Setup Keys and Trust Anchor
-echo "Step 2: Setting up keys and trust anchor..."
+# Step 2: Ensure any existing Unbound instance is stopped...
+echo "Step 2: Ensuring any previous Unbound instance is stopped..."
+ensure_unbound_not_running
+echo "✓ Any previous Unbound instance stopped."
+echo ""
+
+# Step 3: Setup Keys and Trust Anchor
+echo "Step 3: Setting up keys and trust anchor..."
 
 # Create directory if it doesn't exist
 sudo mkdir -p /opt/homebrew/etc/unbound
@@ -67,8 +86,8 @@ else
 fi
 echo ""
 
-# Step 3: Generate Configuration
-echo "Step 3: Generating configuration..."
+# Step 4: Generate Configuration
+echo "Step 4: Generating configuration..."
 
 # Check if env file exists
 if [ ! -f "$ENV_FILE" ]; then
@@ -104,9 +123,9 @@ sed -e "s|__DOMAIN__|$DOMAIN|g" \
 echo "✓ Generated: $CONFIG_FILE"
 echo ""
 
-# Step 4: Generate Ad Blocking List (if enabled)
+# Step 5: Generate Ad Blocking List (if enabled)
 if [ "$ADBLOCK_ENABLED" = true ]; then
-    echo "Step 4: Generating ad blocking list..."
+    echo "Step 5: Generating ad blocking list..."
     
     TEMP_FILE="/tmp/adblock_temp.txt"
     
@@ -143,12 +162,12 @@ EOF
     rm -f "$TEMP_FILE"
     echo ""
 else
-    echo "Step 4: Skipping ad blocking (use --adblock to enable)"
+    echo "Step 5: Skipping ad blocking (use --adblock to enable)"
     echo ""
 fi
 
-# Step 5: Deploy Configuration
-echo "Step 5: Deploying configuration..."
+# Step 6: Deploy Configuration
+echo "Step 6: Deploying configuration..."
 
 # Copy generated config
 echo "Copying configuration files..."
@@ -158,13 +177,32 @@ sudo cp "$ADBLOCK_FILE" /opt/homebrew/etc/unbound/adblock.conf
 echo "✓ Configuration deployed"
 echo ""
 
-# Step 6: Verify Configuration
-echo "Step 6: Verifying configuration..."
-if sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf 2>&1 | grep -q "no errors"; then
+# Step 6.1: Ensure log path and deploy service files to all Unbound versions
+echo "Step 6.1: Ensuring log path and deploying service files..."
+
+# Ensure log directory and file exist
+mkdir -p /opt/homebrew/var/log
+sudo touch /opt/homebrew/var/log/unbound.log
+
+# Copy our service definitions into each installed Homebrew Unbound version directory
+for vdir in /opt/homebrew/Cellar/unbound/*; do
+    if [ -d "$vdir" ]; then
+        echo "Deploying service files to: $vdir"
+        sudo cp "$SCRIPT_DIR/homebrew.unbound.service" "$vdir/homebrew.unbound.service"
+        sudo cp "$SCRIPT_DIR/homebrew.mxcl.unbound.plist" "$vdir/homebrew.mxcl.unbound.plist"
+    fi
+done
+
+echo "✓ Service files deployed to all available versions"
+echo ""
+
+# Step 7: Verify Configuration
+echo "Step 7: Verifying configuration..."
+if validate_unbound_config; then
     echo "✓ Configuration is valid"
 else
-    echo "✗ Configuration has errors:"
-    sudo /opt/homebrew/sbin/unbound-checkconf /opt/homebrew/etc/unbound/unbound.conf
+    echo "✗ Configuration has errors."
+    # The validation function will print the specific error details.
     exit 1
 fi
 echo ""

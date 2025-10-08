@@ -1,0 +1,12 @@
+[Unit]
+Description=Homebrew generated unit for unbound
+
+[Install]
+WantedBy=default.target
+
+[Service]
+Type=simple
+ExecStart="/opt/homebrew/sbin/unbound" "-d" "-c" "/opt/homebrew/etc/unbound/unbound.conf"
+Restart=always
+StandardOutput=append:/opt/homebrew/var/log/unbound.log
+StandardError=append:/opt/homebrew/var/log/unbound.log

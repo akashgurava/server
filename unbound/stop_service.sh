@@ -3,36 +3,34 @@
 
 set -e
 
-echo "========================================="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source library functions
+source "$SCRIPT_DIR/lib.sh"
+
+echo ""
+echo "$(printf '=%.0s' {1..80})"
 echo "Stopping Unbound DNS Server"
-echo "========================================="
+echo "$(printf '=%.0s' {1..80})"
 echo ""
 
 # Check if Unbound is running
-if pgrep -x unbound > /dev/null; then
+if check_unbound_running; then
     echo "Stopping Unbound..."
-    sudo pkill unbound
-    sleep 2
+    stop_unbound
     
     # Verify it stopped
-    if ! pgrep -x unbound > /dev/null; then
+    if ! check_unbound_running; then
         echo "✓ Unbound stopped successfully"
     else
         echo "⚠️  Unbound may still be running"
-        echo "Force kill? [y/N]: "
-        read -n 1 -r
-        echo ""
-        
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            sudo pkill -9 unbound
-            echo "✓ Unbound force stopped"
-        fi
     fi
 else
     echo "Unbound is not running"
 fi
 
 echo ""
-echo "========================================="
+echo "$(printf '=%.0s' {1..80})"
 echo "Done"
-echo "========================================="
+echo "$(printf '=%.0s' {1..80})"
+echo ""
