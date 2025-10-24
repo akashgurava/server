@@ -187,35 +187,3 @@ validate_unbound_config() {
     echo "$output"
     return $exit_code
 }
-
-# # --- Utility Functions ---
-
-# # Check what process is using the DNS port (53).
-# # Returns: Process info as a string or an empty string if port is free.
-# check_port_53() {
-#     sudo lsof -i :53 -sTCP:LISTEN 2>/dev/null
-# }
-
-# # Forcefully kill a process by its PID.
-# # Args: $1 = PID
-# # Returns: 0 on success.
-# kill_pid() {
-#     local pid=$1
-#     if [[ -n "$pid" ]]; then
-#         sudo kill -9 "$pid" >/dev/null 2>&1 || true
-#         sleep 1
-#     fi
-# }
-
-# # --- Getters & Prerequisite Checks ---
-
-# # Get the configured path to the Unbound binary.
-# get_unbound_bin() {
-#     echo "$UNBOUND_BIN"
-# }
-
-# # Get the configured path to the Unbound config file.
-# get_unbound_config() {
-#     echo "$UNBOUND_CONFIG"
-# }
-

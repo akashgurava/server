@@ -15,12 +15,12 @@ echo "$(printf '=%.0s' {1..80})"
 echo ""
 
 # Check if Unbound is running
-if check_unbound_running; then
+if is_unbound_running; then
     echo "Stopping Unbound..."
-    stop_unbound
+    ensure_unbound_not_running
     
     # Verify it stopped
-    if ! check_unbound_running; then
+    if ! is_unbound_running; then
         echo "✓ Unbound stopped successfully"
     else
         echo "⚠️  Unbound may still be running"
