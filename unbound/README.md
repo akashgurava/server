@@ -21,15 +21,8 @@ This setup provides:
 # Start Unbound
 ./start_service.sh
 
-# Start with monitor (auto-restarts if crashes, runs on login)
-# Note: Requires passwordless sudo setup (see Step 4a)
-./manage_monitor.sh install
-
-# Check monitor status
-./manage_monitor.sh status
-
-# View logs
-./manage_monitor.sh logs
+# Stop Unbound
+./stop_service.sh
 ```
 
 ## Network Configuration
@@ -52,16 +45,14 @@ This setup provides:
 
 ```
 unbound/
-├── README.md              # This file
-├── config.env             # Configuration variables (edit this!)
-├── unbound.conf.template  # Configuration template
-├── setup.sh               # Main setup script (installs, configures, deploys)
-├── start_service.sh       # Start Unbound (handles port 53 conflicts)
-├── stop_service.sh        # Stop Unbound
-├── monitor_service.sh     # Background monitor (auto-restarts if Unbound crashes)
-├── manage_monitor.sh      # Manage the monitor service (start/stop/status)
-├── adblock.conf           # Ad blocking rules (optional)
-└── .gitignore             # Excludes generated files
+├── README.md # This file
+├── config.env # Configuration variables (edit this!)
+├── unbound.conf.template # Configuration template
+├── setup.sh # Main setup script (installs, configures, deploys)
+├── start_service.sh # Start Unbound (handles port 53 conflicts)
+├── stop_service.sh # Stop Unbound
+├── adblock.conf # Ad blocking rules (optional)
+└── .gitignore # Excludes generated files
 ```
 
 ## Installation
@@ -75,6 +66,7 @@ nano config.env
 ```
 
 Set these values:
+
 ```bash
 DOMAIN="225274.xyz"
 LOCAL_SUBNET="192.168.1.0/24"
@@ -86,6 +78,7 @@ TAILSCALE_IP="100.64.1.2"
 ### 2. Run Setup Script
 
 The setup script will:
+
 - Install Unbound (if not installed)
 - Generate DNSSEC trust anchor and control keys
 - Generate configuration from template
@@ -114,83 +107,11 @@ chmod +x start_service.sh
 
 # The script will:
 # - Check if port 53 is in use
-# - Offer to stop Colima/Lima if detected
 # - Validate configuration
 # - Start Unbound
 ```
 
 **Note**: We don't use `brew services` because it conflicts with Colima on port 53.
-
-### 4. (Optional) Enable Monitor Service
-
-The monitor service runs in the background and automatically restarts Unbound if it crashes. It uses macOS LaunchAgent for proper service management.
-
-#### Step 4a: Configure Passwordless Sudo
-
-Since Unbound requires sudo to start/stop, we need to configure passwordless sudo for specific commands:
-
-```bash
-# Edit sudoers file (use visudo for safety)
-sudo visudo
-
-# Add these lines at the end (replace YOUR_USERNAME with your actual username):
-# Unbound monitor - passwordless sudo for specific commands
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /opt/homebrew/sbin/unbound
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /opt/homebrew/sbin/unbound-checkconf
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /usr/sbin/lsof
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /usr/bin/pkill unbound
-YOUR_USERNAME ALL=(ALL) NOPASSWD: /bin/kill
-```
-
-**Example for user 'akash':**
-```
-akash ALL=(ALL) NOPASSWD: /opt/homebrew/sbin/unbound
-akash ALL=(ALL) NOPASSWD: /opt/homebrew/sbin/unbound-checkconf
-akash ALL=(ALL) NOPASSWD: /usr/sbin/lsof
-akash ALL=(ALL) NOPASSWD: /usr/bin/pkill unbound
-akash ALL=(ALL) NOPASSWD: /bin/kill
-```
-
-**Important:** Save and exit with `:wq` in visudo. It will validate the syntax.
-
-#### Step 4b: Install Monitor
-
-```bash
-# Make manage script executable
-chmod +x manage_monitor.sh
-
-# Install and start the monitor (auto-starts on login)
-./manage_monitor.sh install
-
-# Check monitor status
-./manage_monitor.sh status
-
-# View monitor logs
-./manage_monitor.sh logs
-
-# Follow logs in real-time
-./manage_monitor.sh follow
-```
-
-**Monitor features:**
-- Uses macOS `launchctl` (LaunchAgent)
-- Checks every 60 seconds if Unbound is running
-- Automatically restarts Unbound using `--unattended` mode (no prompts)
-- Checks if Unbound is responding to DNS queries
-- Prevents restart loops (stops after 3 crashes in 5 minutes)
-- Auto-starts on login (after installation)
-- Auto-restarts if the monitor itself crashes (`KeepAlive: true`)
-- Logs all activity to `monitor.log`
-
-**To stop temporarily:**
-```bash
-./manage_monitor.sh stop
-```
-
-**To permanently remove:**
-```bash
-./manage_monitor.sh uninstall
-```
 
 ## Updating Configuration
 
@@ -337,41 +258,6 @@ dig @127.0.0.1 doubleclick.net
 ./stop_service.sh && ./start_service.sh
 ```
 
-### Monitor Service
-
-```bash
-# Install monitor (creates LaunchAgent, auto-starts on login)
-./manage_monitor.sh install
-
-# Start monitor (if already installed)
-./manage_monitor.sh start
-
-# Check if monitor is running
-./manage_monitor.sh status
-
-# View monitor logs
-./manage_monitor.sh logs
-
-# Follow logs in real-time
-./manage_monitor.sh follow
-
-# Stop monitor (temporarily - will restart on login)
-./manage_monitor.sh stop
-
-# Restart monitor
-./manage_monitor.sh restart
-
-# Uninstall monitor (permanently removes LaunchAgent)
-./manage_monitor.sh uninstall
-```
-
-**LaunchAgent details:**
-- Service name: `com.unbound.monitor`
-- Plist location: `~/Library/LaunchAgents/com.unbound.monitor.plist`
-- Runs as your user (requires passwordless sudo for Unbound commands)
-- Auto-starts on login
-- Auto-restarts if it crashes
-
 ### View Statistics
 
 ```bash
@@ -424,6 +310,7 @@ log show --predicate 'process == "unbound"' --level error --last 1h | grep SERVF
 ```
 
 **Current logging configuration:**
+
 - `verbosity: 1` - Operational info (errors + warnings)
 - `use-syslog: yes` - Logs to macOS system logs
 - `log-queries: no` - Query logging disabled (for performance)
@@ -432,6 +319,7 @@ log show --predicate 'process == "unbound"' --level error --last 1h | grep SERVF
 - `log-servfail: yes` - DNS failures are logged
 
 **To enable debug logging temporarily:**
+
 1. Edit `/opt/homebrew/etc/unbound/unbound.conf`
 2. Change `verbosity: 1` to `verbosity: 2` (or higher)
 3. Set `log-queries: yes` and `log-replies: yes` if needed
@@ -531,6 +419,7 @@ sudo lsof -i :53
 # Check logs
 log stream --predicate 'process == "unbound"' --last 5m
 ```
+
 ### DNS not resolving
 
 ```bash
