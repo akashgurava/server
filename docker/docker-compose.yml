@@ -13,9 +13,52 @@ networks:
 
 services:
 
+  beszel:
+    image: henrygd/beszel:0.14.1
+    container_name: beszel
+    hostname: beszel
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.1.3
+        ipv6_address: 2001:db8:1::103
+    ports:
+      - 8090:8090
+    volumes:
+      - ${LCL_BESZEL_DATA}:/beszel_data
+      - ${LCL_BESZEL_SOCKET}:/beszel_socket
+    environment:
+      - TZ=${TZ}
+    healthcheck:
+      # The URL is relative to the container, not the host
+      test: ['CMD', '/beszel', 'health', '--url', 'http://beszel:8090']
+      start_period: 5s # Check 5 seconds after the container starts
+      interval: 120s # Then check every 120 seconds after that
+
+  # beszel-agent:
+  #   image: henrygd/beszel-agent:0.14.1
+  #   container_name: beszel-agent
+  #   hostname: beszel-agent
+  #   restart: unless-stopped
+  #   network_mode: host
+  #   volumes:
+  #     - ${LCL_BESZEL_AGENT_DATA}:/var/lib/beszel-agent
+  #     - ${LCL_BESZEL_SOCKET}:/beszel_socket
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     # monitor other disks / partitions by mounting a folder in /extra-filesystems
+  #     # - /mnt/disk/.beszel:/extra-filesystems/sda1:ro
+  #   environment:
+  #     LISTEN: /beszel_socket/beszel.sock
+  #     HUB_URL: http://localhost:8090
+  #     KEY: ${BESZEL_DOCKER_AGENT_KEY}
+  #     TOKEN: ${BESZEL_DOCKER_AGENT_TOKEN}
+  #   healthcheck:
+  #     test: ['CMD', '/agent', 'health']
+  #     interval: 120s
+
   # Reverse Proxy - Traefik
   traefik:
-    image: traefik:v3.4
+    image: traefik:v3.5
     container_name: traefik
     hostname: traefik
     restart: unless-stopped
@@ -44,4 +87,4 @@ volumes:
 include:
   - docker-compose-utilities.yml
   # - docker-compose-monitor.yml
-  # - docker-compose-media.yml
+  - docker-compose-media.yml

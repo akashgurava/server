@@ -19,8 +19,7 @@ services:
     volumes:
       - './config/filebrowser:/home/filebrowser/data'
       - ${LCL_USER_DOWNLOADS_BASE}:/downloads
-      - ${EXT_MEDIA_BASE}:/media
-      - ${EXT_SEEDBOX_BASE}:/seedbox
+      - ${EXT_STORAGE_BASE}:/storage
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.225274.xyz`)"
@@ -44,6 +43,8 @@ services:
       server_network:
         ipv4_address: 172.18.2.11
         ipv6_address: 2001:db8:1::211
+    ports:
+      - "5800:5800"
     volumes:
       - ${LCL_FIREFOX_CONFIG}:/config
       - ${LCL_DOWNLOADS_DATA}:/config/Downloads

@@ -9,10 +9,8 @@ server:
   sources:                                        #  validate:required,dive
     - path: "/downloads"
       name: "downloads"
-    - path: "/media"
-      name: "media"
-    - path: "/seedbox"
-      name: "seedbox"
+    - path: "/storage"
+      name: "storage"
 #       config:
 #         denyByDefault: false              # deny access unless an "allow" access rule was specifically created.
 #         private: false                    # designate as source as private -- currently just means no sharing permitted.
