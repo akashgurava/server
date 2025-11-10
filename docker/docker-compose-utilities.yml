@@ -1,5 +1,6 @@
 services:
-
+  # Filebrowser
+  # Ports: 5900
   filebrowser:
     user: 1000:1000
     image: gtstef/filebrowser:beta-slim
@@ -10,31 +11,35 @@ services:
       server_network:
         ipv4_address: 172.18.2.1
         ipv6_address: 2001:db8:1::201
+    volumes:
+      - './config/filebrowser:/home/filebrowser/data'
+      - ${LCL_USER_DOWNLOADS_BASE}:/downloads
+      - ${EXT_STORAGE_BASE}:/storage
     environment:
       FILEBROWSER_CONFIG: "/home/filebrowser/data/config.yml"
       FILEBROWSER_ADMIN_PASSWORD: admin
       USER_ID: 1000
       GROUP_ID: 1000
       TZ: ${TZ}
-    volumes:
-      - './config/filebrowser:/home/filebrowser/data'
-      - ${LCL_USER_DOWNLOADS_BASE}:/downloads
-      - ${EXT_STORAGE_BASE}:/storage
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.225274.xyz`)"
-      - "traefik.http.routers.filebrowser.entrypoints=websecure"
-      - "traefik.http.routers.filebrowser.tls=true"
-      - "traefik.http.services.filebrowser.loadbalancer.server.port=5900"
-      - "traefik.http.routers.filebrowser.tls.certresolver=letsencrypt"  # ← Add this
     healthcheck:
       test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:5900" ]
       start_period: 5s
       interval: 30s
       timeout: 5s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.225274.xyz`)"
+      - "traefik.http.routers.filebrowser.entrypoints=websecure"
+      - "traefik.http.routers.filebrowser.tls=true"
+      - "traefik.http.services.filebrowser.loadbalancer.server.port=5900"
+      - "traefik.http.routers.filebrowser.tls.certresolver=letsencrypt"
 
+  # Firefox
+  # Ports: 5800
   firefox:
+    # Needs root? Error: mkdir: can't create directory '/.docker-instance': Permission denied
+    # user: 1000:1000
     image: jlesage/firefox
     container_name: firefox
     hostname: firefox
@@ -49,20 +54,19 @@ services:
       - ${LCL_FIREFOX_CONFIG}:/config
       - ${LCL_DOWNLOADS_DATA}:/config/Downloads
     environment:
-      - TZ=${TZ}
-      - USER_ID=1000
-      - GROUP_ID=1000
-      # - KEEP_APP_RUNNING=1
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.firefox.rule=Host(`firefox.225274.xyz`)"
-      - "traefik.http.routers.firefox.entrypoints=websecure"
-      - "traefik.http.routers.firefox.tls=true"
-      - "traefik.http.services.firefox.loadbalancer.server.port=5800"
-      - "traefik.http.routers.firefox.tls.certresolver=letsencrypt"  # ← Add this
+      TZ: ${TZ}
+      USER_ID: 1000
+      GROUP_ID: 1000
     healthcheck:
       test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:5800" ]
       start_period: 5s
       interval: 30s
       timeout: 5s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.firefox.rule=Host(`firefox.225274.xyz`)"
+      - "traefik.http.routers.firefox.entrypoints=websecure"
+      - "traefik.http.routers.firefox.tls=true"
+      - "traefik.http.services.firefox.loadbalancer.server.port=5800"
+      - "traefik.http.routers.firefox.tls.certresolver=letsencrypt"

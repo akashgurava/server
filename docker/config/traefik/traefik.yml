@@ -9,6 +9,8 @@ entryPoints:
           permanent: true
   websecure:
     address: ":443"
+  ping:
+    address: ":8082"
 
 certificatesResolvers:
   letsencrypt:
@@ -26,6 +28,7 @@ certificatesResolvers:
 
 log:
   level: INFO
+
 accessLog: {}
 
 tls:
@@ -38,6 +41,9 @@ tls:
 api:
   dashboard: true
   insecure: false
+
+ping:
+  entryPoint: ping
 
 providers:
   docker:
