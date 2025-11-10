@@ -1,5 +1,6 @@
 tunnel: 887b28ec-ae51-4b5f-a788-7c955f7d2eb2
-credentials-file: /Users/akash/Documents/server/.cloudflared/887b28ec-ae51-4b5f-a788-7c955f7d2eb2.json
+credentials-file: /opt/homebrew/etc/cloudflared/887b28ec-ae51-4b5f-a788-7c955f7d2eb2.json
+origincert: /opt/homebrew/etc/cloudflared/cert.pem
 
 ingress:
   # Remote Access
