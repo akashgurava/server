@@ -3,7 +3,7 @@ server:
   disablePreviews: true                           # disable all previews thumbnails, simple icons will be used
   disablePreviewResize: false                     # disable resizing of previews for faster loading over slow connections
   disableTypeDetectionByHeader: false             # disable type detection by header, useful if filesystem is slow.
-  port: 5900                                      # port to listen on
+  port: 6800                                      # port to listen on
   baseURL: "/"                                    # base URL for the server, the subpath that the server is running on.
   database: "/home/filebrowser/data/database.db"  # path to the database file
   sources:                                        #  validate:required,dive

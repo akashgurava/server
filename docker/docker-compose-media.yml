@@ -4,7 +4,7 @@ services:
   # Ports: 8088, 6881
   qbit:
     user: 1000:1000
-    image: lscr.io/linuxserver/qbittorrent:5.1.2
+    image: lscr.io/linuxserver/qbittorrent:5.1.4
     container_name: qbit
     hostname: qbit
     restart: unless-stopped
@@ -42,11 +42,41 @@ services:
       - "traefik.http.services.qbit.loadbalancer.server.port=8088"
       - "traefik.http.routers.qbit.tls.certresolver=letsencrypt"
 
+  # Cross-Seed
+  # Ports: 2468
+  cross-seed:
+    user: 1000:1000
+    command: daemon
+    image: ghcr.io/cross-seed/cross-seed:6
+    container_name: cross-seed
+    hostname: cross-seed
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.4.2
+        ipv6_address: 2001:db8:1::402
+    ports:
+      - "2468:2468"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    volumes:
+      - ${LCL_CROSS_SEED_CONFIG}:/config
+      - ${EXT_STORAGE_BASE}:/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cross-seed.rule=Host(`cross-seed.225274.xyz`)"
+      - "traefik.http.routers.cross-seed.entrypoints=websecure"
+      - "traefik.http.routers.cross-seed.tls=true"
+      - "traefik.http.services.cross-seed.loadbalancer.server.port=2468"
+      - "traefik.http.routers.cross-seed.tls.certresolver=letsencrypt"
+
   # Prowlarr
   # Ports: 9696
   prowlarr:
     user: 1000:1000
-    image: lscr.io/linuxserver/prowlarr:2.1.5
+    image: lscr.io/linuxserver/prowlarr:2.3.0
     container_name: prowlarr
     hostname: prowlarr
     restart: unless-stopped
@@ -80,8 +110,9 @@ services:
   # Ports: 7878
   radarr:
     user: 1000:1000
-    image: lscr.io/linuxserver/radarr:5.28.0
+    image: lscr.io/linuxserver/radarr:6.0.4
     container_name: radarr
+    hostname: radarr
     restart: unless-stopped
     networks:
       server_network:
@@ -114,8 +145,9 @@ services:
   # Ports: 8989
   sonarr:
     user: 1000:1000
-    image: lscr.io/linuxserver/sonarr:4.0.15
+    image: lscr.io/linuxserver/sonarr:4.0.16
     container_name: sonarr
+    hostname: sonarr
     restart: unless-stopped
     networks:
       server_network:
@@ -144,21 +176,49 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
       - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
 
+  # Profilarr
+  # Ports: 6868
+  profilarr:
+    image: santiagosayshey/profilarr:beta
+    container_name: profilarr
+    hostname: profilarr
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.4.13
+        ipv6_address: 2001:db8:1::413
+    ports:
+      - "6868:6868"
+    volumes:
+      - ${LCL_PROFILARR_CONFIG}:/config
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Asia/Kolkata"
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:6868" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.profilarr.rule=Host(`profilarr.225274.xyz`)"
+      - "traefik.http.routers.profilarr.entrypoints=websecure"
+      - "traefik.http.routers.profilarr.tls=true"
+      - "traefik.http.services.profilarr.loadbalancer.server.port=6868"
+      - "traefik.http.routers.profilarr.tls.certresolver=letsencrypt"
+
   # Jellyfin
   # Ports: 8096
   jellyfin:
     # Needs root? error unable to access /data etc.
     # user: 1000:1000
-    image: lscr.io/linuxserver/jellyfin:10.11.0
+    image: lscr.io/linuxserver/jellyfin:10.11.6
     container_name: jellyfin
     hostname: jellyfin
     restart: unless-stopped
-    networks:
-      server_network:
-        ipv4_address: 172.18.4.101
-        ipv6_address: 2001:db8:1::4101
-    ports:
-      - "8096:8096"
+    network_mode: host
     volumes:
       - ${LCL_JELLYFIN_CONFIG}:/config
       - ${EXT_STORAGE_BASE}:/storage
