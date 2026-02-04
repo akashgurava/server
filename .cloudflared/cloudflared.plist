@@ -21,7 +21,7 @@
 	<array>
 		<string>/opt/homebrew/bin/cloudflared</string>
 		<string>--config</string>
-		<string>/Users/akash/Documents/server/.cloudflared/cloudflare.yml</string>
+		<string>/opt/homebrew/etc/cloudflared/cloudflare.yml</string>
 		<string>tunnel</string>
 		<string>run</string>
 	</array>

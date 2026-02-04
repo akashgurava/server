@@ -9,23 +9,33 @@ ingress:
   - hostname: macair.225274.xyz
     service: ssh://localhost:22
 
+  # Utilities
+  - hostname: filebrowser.225274.xyz
+    service: http://localhost:6800
+  - hostname: vaultwarden.225274.xyz
+    service: http://localhost:8100
+
   # Monitoring
+  - hostname: traefik.225274.xyz
+    service: http://localhost:8080
+  - hostname: beszel.225274.xyz
+    service: http://localhost:8090
   - hostname: grafana.225274.xyz
-    service: http://192.168.1.2:3000
+    service: http://localhost:3000
 
   # Media
   - hostname: qbit.225274.xyz
-    service: http://192.168.1.2:8088
+    service: http://localhost:8088
   - hostname: prowlarr.225274.xyz
-    service: http://192.168.1.2:9696
-  - hostname: sonarr.225274.xyz
-    service: http://192.168.1.2:8989
+    service: http://localhost:9696
   - hostname: radarr.225274.xyz
-    service: http://192.168.1.2:7878
+    service: http://localhost:7878
+  - hostname: sonarr.225274.xyz
+    service: http://localhost:8989
   - hostname: jellyfin.225274.xyz
-    service: http://192.168.1.2:8096
+    service: http://localhost:8096
 
   - hostname: chat.225274.xyz
-    service: http://192.168.1.2:4000
+    service: http://localhost:4000
 
   - service: http_status:404
