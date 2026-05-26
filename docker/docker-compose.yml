@@ -15,7 +15,7 @@ services:
   # Reverse Proxy - Traefik
   # Ports: 80, 443, 8080
   traefik:
-    image: traefik:v3.5
+    image: traefik:v3.7
     container_name: traefik
     hostname: traefik
     restart: unless-stopped

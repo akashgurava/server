@@ -14,6 +14,8 @@ ingress:
     service: http://localhost:6800
   - hostname: vaultwarden.225274.xyz
     service: http://localhost:8100
+  - hostname: wud.225274.xyz
+    service: http://localhost:80
 
   # Monitoring
   - hostname: traefik.225274.xyz
@@ -34,8 +36,5 @@ ingress:
     service: http://localhost:8989
   - hostname: jellyfin.225274.xyz
     service: http://localhost:8096
-
-  - hostname: chat.225274.xyz
-    service: http://localhost:4000
 
   - service: http_status:404

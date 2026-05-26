@@ -32,6 +32,6 @@
 	<key>StandardOutPath</key>
 	<string>/opt/homebrew/var/log/cloudflared.log</string>
 	<key>WorkingDirectory</key>
-	<string>/Users/akash/Documents/server</string>
+	<string>/opt/homebrew/var/log/</string>
 </dict>
 </plist>

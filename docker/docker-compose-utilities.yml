@@ -3,7 +3,7 @@ services:
   # Ports: 5900
   filebrowser:
     user: 1000:1000
-    image: gtstef/filebrowser:1.1.0-stable-slim
+    image: gtstef/filebrowser:1-stable-slim
     container_name: filebrowser
     hostname: filebrowser
     restart: unless-stopped
@@ -40,7 +40,7 @@ services:
   # Vaultwarden
   # Ports: 8100
   vaultwarden:
-    image: ghcr.io/dani-garcia/vaultwarden:1.34.3
+    image: ghcr.io/dani-garcia/vaultwarden:1.36.0
     container_name: vaultwarden
     hostname: vaultwarden
     restart: unless-stopped
@@ -64,3 +64,27 @@ services:
       - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
       - "traefik.http.routers.vaultwarden.tls.certresolver=letsencrypt"
 
+  # WhatsUpDocker
+  # Ports: 3888
+  wud:
+    image: getwud/wud
+    container_name: wud
+    hostname: wud
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.2.22
+        ipv6_address: 2001:db8:1::222
+    ports:
+      - "3888:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TZ: ${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wud.rule=Host(`wud.225274.xyz`)"
+      - "traefik.http.routers.wud.entrypoints=websecure"
+      - "traefik.http.routers.wud.tls=true"
+      - "traefik.http.services.wud.loadbalancer.server.port=3000"
+      - "traefik.http.routers.wud.tls.certresolver=letsencrypt"

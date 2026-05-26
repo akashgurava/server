@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 set -euo pipefail
 
 # Script to check if external hard disk drives are properly mounted
@@ -11,11 +11,12 @@ DRIVES=()
 MOUNT_BASE="/Volumes"
 FAILED_DRIVES=()
 SCRIPT_NAME=$(basename "$0")
+DOCKER_CMD=/usr/local/bin/docker
 DOCKER_COMPOSE_PATH=""
 DOCKER_STOPPED=false
 
 # Logging configuration
-LOG_DIR="./logs"
+LOG_DIR="${HOME}/Documents/server/logs/ext_mount"
 LOG_FILE="$LOG_DIR/ext_mount_$(date +%Y%m%d).log"
 UNATTENDED_MODE=false
 MONITOR_MODE=false
@@ -23,10 +24,10 @@ MONITOR_INTERVAL=0
 
 # Function to log messages with timestamps
 log_message() {
-    local status=$1
+    local log_status=$1
     local message=$2
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local log_entry="[$timestamp] [$status] $message"
+    local log_entry="[$timestamp] [$log_status] $message"
     echo "$log_entry" >> "$LOG_FILE"
 }
 
@@ -46,15 +47,15 @@ print_and_log() {
 
 # Function to print colored output and log
 print_status() {
-    local status=$1
+    local msg_status=$1
     local message=$2
     
     # Always log to file
-    log_message "$status" "$message"
+    log_message "$msg_status" "$message"
     
     # Print to console unless in unattended mode
     if [ "$UNATTENDED_MODE" != true ]; then
-        case $status in
+        case $msg_status in
             "OK")
                 echo -e "${GREEN}✅ $message${NC}"
                 ;;
@@ -122,7 +123,7 @@ while [[ $# -gt 0 ]]; do
                 show_usage
                 exit 1
             fi
-            IFS=',' read -ra DRIVES <<< "$2"
+            IFS=',' read -A DRIVES <<< "$2"
             shift 2
             ;;
         --docker-compose)
@@ -322,7 +323,7 @@ get_parent_disk() {
 # Function to get Docker Compose service status
 get_docker_service_status() {
     local compose_dir=$1
-    local services_list=$(cd "$compose_dir" && docker compose ps --services --filter "status=running" 2>/dev/null)
+    local services_list=$(cd "$compose_dir" && $DOCKER_CMD compose ps --services --filter "status=running" 2>/dev/null)
     local running_count=$(echo "$services_list" | grep -c . 2>/dev/null || echo "0")
     local running_services=$(echo "$services_list" | tr '\n' ' ' | sed 's/ $//')
     
@@ -338,7 +339,7 @@ get_docker_service_status() {
 # Function to get total expected services
 get_total_services() {
     local compose_dir=$1
-    cd "$compose_dir" && docker compose config --services 2>/dev/null | grep -c . || echo "0"
+    cd "$compose_dir" && $DOCKER_CMD compose config --services 2>/dev/null | grep -c . || echo "0"
 }
 
 # Function to stop Docker Compose services
@@ -367,7 +368,7 @@ stop_docker_services() {
     local temp_log=$(mktemp)
     
     # Start docker compose down in background
-    (cd "$compose_dir" && docker compose down) > "$temp_log" 2>&1 &
+    (cd "$compose_dir" && $DOCKER_CMD compose down) > "$temp_log" 2>&1 &
     local docker_pid=$!
     
     # Monitor by checking Docker Compose status
@@ -426,20 +427,16 @@ start_docker_services() {
         print_status "INFO" "No Docker Compose file provided, skipping Docker operations"
         return 0
     fi
-    
-    if [ "$DOCKER_STOPPED" != true ]; then
-        return 0
-    fi
-    
+
     print_new_line
-    print_status "WARNING" "Starting Docker services after fixing etmnt drive..."
-    print_status "WARNING" "This may take up to ${DOCKER_UP_TIMEOUT} seconds..."
     
     local compose_dir=$(dirname "$DOCKER_COMPOSE_PATH")
     local temp_log=$(mktemp)
+
+    print_and_log "Temp log at $temp_log"
     
     # Start docker compose up in background
-    (cd "$compose_dir" && docker compose up -d) > "$temp_log" 2>&1 &
+    (cd "$compose_dir" && $DOCKER_CMD compose up -d) > "$temp_log" 2>&1 &
     local docker_pid=$!
     
     # Monitor by checking Docker Compose status
@@ -448,7 +445,7 @@ start_docker_services() {
     local target_services=$(get_total_services "$compose_dir")
     local services_ready=false
 
-    print_status "WARNING" "Waiting for $target_services services to start..."
+    print_and_log "Ensuring docker services are running."
     
     # Check immediately first
     while [ $elapsed -lt $DOCKER_UP_TIMEOUT ] && [ "$services_ready" = false ]; do
@@ -711,7 +708,6 @@ perform_mount_check() {
             exit 1
         fi
     fi
-
     print_status "OK" "All drive issues resolved"
     return 0
 }
@@ -770,6 +766,10 @@ if [ "$MONITOR_MODE" = true ]; then
             log_message "ERROR" "Monitor Cycle #$cycle_count failed"
         fi
         
+        # Ensure docker is running
+        print_and_log "Ensuring Docker services are running"
+        start_docker_services
+
         # Wait for next cycle
         if [ "$UNATTENDED_MODE" != true ]; then
             print_and_log "⏰ Waiting ${MONITOR_INTERVAL}s for next check..."
