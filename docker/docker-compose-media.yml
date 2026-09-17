@@ -44,7 +44,7 @@ services:
       - TZ=${TZ}
 
   radarr:
-    image: lscr.io/linuxserver/radarr:5.26.2
+    image: lscr.io/linuxserver/radarr:6.4.4
     container_name: radarr
     restart: unless-stopped
     networks:
