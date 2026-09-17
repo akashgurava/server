@@ -63,7 +63,7 @@ services:
       - TZ=${TZ}
 
   jellyfin:
-    image: lscr.io/linuxserver/jellyfin:10.10.7
+    image: lscr.io/linuxserver/jellyfin:10.11.11
     container_name: jellyfin
     restart: unless-stopped
     networks:
