@@ -8,23 +8,37 @@ server:
     # Disable chroot on macOS
     chroot: ""
 
-    # Network settings
+    # Network settings - Wildcard binds to all interfaces across both stacks
     interface: 0.0.0.0
+    interface: ::0
+
     port: 53
     do-ip4: yes
     do-ip6: yes
     do-udp: yes
     do-tcp: yes
 
-    # Access control - allow local and Tailscale networks
+    # Access control - Default deny posture
     access-control: 0.0.0.0/0 refuse
+    access-control: ::/0 refuse
+    
+    # Access control - Loopback allowances
     access-control: 127.0.0.0/8 allow
-    access-control: __LOCAL_SUBNET__ allow
-    access-control: __TAILSCALE_SUBNET__ allow
+    access-control: ::1 allow
+    
+    # Access control - Local LAN allowances
+    access-control: __LOCAL_SUBNET_V4__ allow
+    access-control: __LOCAL_SUBNET_V6__ allow
+    
+    # Access control - Tailscale overlay network allowances
+    access-control: __TAILSCALE_SUBNET_V4__ allow
+    access-control: __TAILSCALE_SUBNET_V6__ allow
 
     # Assign views based on client IP
-    access-control-view: __LOCAL_SUBNET__ "local-view"
-    access-control-view: __TAILSCALE_SUBNET__ "tailscale-view"
+    access-control-view: __LOCAL_SUBNET_V4__ "local-view"
+    access-control-view: __LOCAL_SUBNET_V6__ "local-view"
+    access-control-view: __TAILSCALE_SUBNET_V4__ "tailscale-view"
+    access-control-view: __TAILSCALE_SUBNET_V6__ "tailscale-view"
 
     # Cache settings
     cache-min-ttl: 300
@@ -70,11 +84,13 @@ remote-control:
     control-key-file: "/opt/homebrew/etc/unbound/unbound_control.key"
     control-cert-file: "/opt/homebrew/etc/unbound/unbound_control.pem"
 
-# Forward everything else to Cloudflare (for non-view queries)
+# Forward everything else to upstream resolvers (fallback for non-view scoped queries)
 forward-zone:
     name: "."
     forward-addr: 1.1.1.1
-    forward-addr: 1.0.0.1
+    forward-addr: 8.8.8.8
+    forward-addr: 2606:4700:4700::1111
+    forward-addr: 2001:4860:4860::8888
 
 # View for local network
 view:
@@ -84,21 +100,25 @@ view:
     # Local zone for your domain
     local-zone: "__DOMAIN__." static
 
-    # Your services - return local IP
-    local-data: "traefik.__DOMAIN__. IN A __LOCAL_IP__"
+    # Services mapped explicitly to A and AAAA records
+    local-data: "traefik.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "traefik.__DOMAIN__. IN AAAA __LOCAL_IP_V6__"
 
-    local-data: "firefox.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "filebrowser.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "vaultwarden.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "wud.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "firefox.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "filebrowser.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "vaultwarden.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "wud.__DOMAIN__. IN A __LOCAL_IP_V4__"
 
-    local-data: "beszel.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "dawarich.__DOMAIN__. IN A __LOCAL_IP_V4__"
 
-    local-data: "qbit.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "prowlarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "radarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "sonarr.__DOMAIN__. IN A __LOCAL_IP__"
-    local-data: "jellyfin.__DOMAIN__. IN A __LOCAL_IP__"
+    local-data: "beszel.__DOMAIN__. IN A __LOCAL_IP_V4__"
+
+    local-data: "qbit.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "prowlarr.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "radarr.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "sonarr.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "profilarr.__DOMAIN__. IN A __LOCAL_IP_V4__"
+    local-data: "jellyfin.__DOMAIN__. IN A __LOCAL_IP_V4__"
 
 # View for Tailscale network
 view:
@@ -108,18 +128,22 @@ view:
     # Local zone for your domain
     local-zone: "__DOMAIN__." static
 
-    # Your services - return Tailscale IP
-    local-data: "traefik.__DOMAIN__. IN A __TAILSCALE_IP__"
+    # Your services - mapped explicitly to Tailscale topologies
+    local-data: "traefik.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "traefik.__DOMAIN__. IN AAAA __TAILSCALE_IP_V6__"
 
-    local-data: "firefox.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "filebrowser.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "vaultwarden.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "wud.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "firefox.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "filebrowser.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "vaultwarden.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "wud.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
 
-    local-data: "beszel.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "dawarich.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
 
-    local-data: "qbit.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "prowlarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "radarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "sonarr.__DOMAIN__. IN A __TAILSCALE_IP__"
-    local-data: "jellyfin.__DOMAIN__. IN A __TAILSCALE_IP__"
+    local-data: "beszel.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+
+    local-data: "qbit.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "prowlarr.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "radarr.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "sonarr.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "profilarr.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+    local-data: "jellyfin.__DOMAIN__. IN A __TAILSCALE_IP_V4__"

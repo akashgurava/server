@@ -16,7 +16,7 @@ DOCKER_COMPOSE_PATH=""
 DOCKER_STOPPED=false
 
 # Logging configuration
-LOG_DIR="${HOME}/Documents/server/logs/ext_mount"
+LOG_DIR="${HOME}/Documents/projects/server/logs/ext_mount"
 LOG_FILE="$LOG_DIR/ext_mount_$(date +%Y%m%d).log"
 UNATTENDED_MODE=false
 MONITOR_MODE=false

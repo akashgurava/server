@@ -8,11 +8,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/akash/Documents/server/check_ext_mount.sh</string>
+        <string>/Users/akash/Documents/projects/server/scripts/check_ext_mount.sh</string>
         <string>--drives</string>
         <string>etmnt,share,bkp</string>
         <string>--docker-compose</string>
-        <string>/Users/akash/Documents/server/docker/docker-compose.yml</string>
+        <string>/Users/akash/Documents/projects/server/docker/docker-compose.yml</string>
         <string>--monitor</string>
         <string>300</string>
         <string>--unattended</string>

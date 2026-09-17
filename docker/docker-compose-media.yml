@@ -76,7 +76,7 @@ services:
   # Ports: 9696
   prowlarr:
     user: 1000:1000
-    image: lscr.io/linuxserver/prowlarr:2.3.0
+    image: lscr.io/linuxserver/prowlarr:2.4.0
     container_name: prowlarr
     hostname: prowlarr
     restart: unless-stopped
@@ -110,7 +110,7 @@ services:
   # Ports: 7878
   radarr:
     user: 1000:1000
-    image: lscr.io/linuxserver/radarr:6.0.4
+    image: lscr.io/linuxserver/radarr:6.3.0
     container_name: radarr
     hostname: radarr
     restart: unless-stopped
@@ -145,7 +145,7 @@ services:
   # Ports: 8989
   sonarr:
     user: 1000:1000
-    image: lscr.io/linuxserver/sonarr:4.0.16
+    image: lscr.io/linuxserver/sonarr:4.0.19
     container_name: sonarr
     hostname: sonarr
     restart: unless-stopped
@@ -176,10 +176,44 @@ services:
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
       - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
 
+  # # Profilarr
+  # # Ports: 6868
+  # profilarr:
+  #   image: santiagosayshey/profilarr:beta
+  #   container_name: profilarr
+  #   hostname: profilarr
+  #   restart: unless-stopped
+  #   networks:
+  #     server_network:
+  #       ipv4_address: 172.18.4.13
+  #       ipv6_address: 2001:db8:1::413
+  #   ports:
+  #     - "6868:6868"
+  #   volumes:
+  #     - ${LCL_PROFILARR_CONFIG}:/config
+  #   environment:
+  #     PUID: "1000"
+  #     PGID: "1000"
+  #     TZ: "Asia/Kolkata"
+  #   healthcheck:
+  #     test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:6868" ]
+  #     start_period: 5s
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.profilarr.rule=Host(`profilarr.225274.xyz`)"
+  #     - "traefik.http.routers.profilarr.entrypoints=websecure"
+  #     - "traefik.http.routers.profilarr.tls=true"
+  #     - "traefik.http.services.profilarr.loadbalancer.server.port=6868"
+  #     - "traefik.http.routers.profilarr.tls.certresolver=letsencrypt"
+
   # Profilarr
   # Ports: 6868
   profilarr:
-    image: santiagosayshey/profilarr:beta
+    user: 1000:1000
+    image: ghcr.io/dictionarry-hub/profilarr:latest
     container_name: profilarr
     hostname: profilarr
     restart: unless-stopped
@@ -192,11 +226,13 @@ services:
     volumes:
       - ${LCL_PROFILARR_CONFIG}:/config
     environment:
-      PUID: "1000"
-      PGID: "1000"
-      TZ: "Asia/Kolkata"
+      PUID: 1000
+      PGID: 1000
+      TZ: ${TZ}
+      # Uncomment ORIGIN if you use a reverse proxy to access your containers.
+      ORIGIN: https://profilarr.225274.xyz
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:6868" ]
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:6868/health || exit 1" ]
       start_period: 5s
       interval: 30s
       timeout: 5s
@@ -214,7 +250,7 @@ services:
   jellyfin:
     # Needs root? error unable to access /data etc.
     # user: 1000:1000
-    image: lscr.io/linuxserver/jellyfin:10.11.6
+    image: lscr.io/linuxserver/jellyfin:10.11.11
     container_name: jellyfin
     hostname: jellyfin
     restart: unless-stopped

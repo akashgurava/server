@@ -99,25 +99,34 @@ fi
 # Load variables from config.env
 source "$ENV_FILE"
 
-# Validate required variables
-if [ -z "$DOMAIN" ] || [ -z "$LOCAL_SUBNET" ] || [ -z "$LOCAL_IP" ] || \
-   [ -z "$TAILSCALE_SUBNET" ] || [ -z "$TAILSCALE_IP" ]; then
+# Validate required variables across both network families
+if [ -z "$DOMAIN" ] || \
+   [ -z "$LOCAL_SUBNET_V4" ] || [ -z "$LOCAL_SUBNET_V6" ] || \
+   [ -z "$LOCAL_IP_V4" ]     || [ -z "$LOCAL_IP_V6" ]     || \
+   [ -z "$TAILSCALE_SUBNET_V4" ] || [ -z "$TAILSCALE_SUBNET_V6" ] || \
+   [ -z "$TAILSCALE_IP_V4" ]     || [ -z "$TAILSCALE_IP_V6" ]; then
     echo "Error: Missing required variables in $ENV_FILE"
-    echo "Required: DOMAIN, LOCAL_SUBNET, LOCAL_IP, TAILSCALE_SUBNET, TAILSCALE_IP"
+    echo "Ensure all V4 and V6 variables are fully populated."
     exit 1
 fi
 
 echo "Configuration:"
-echo "  Domain: $DOMAIN"
-echo "  Local: $LOCAL_SUBNET -> $LOCAL_IP"
-echo "  Tailscale: $TAILSCALE_SUBNET -> $TAILSCALE_IP"
+echo "  Domain:    $DOMAIN"
+echo "  Local IPv4: $LOCAL_SUBNET_V4 -> $LOCAL_IP_V4"
+echo "  Local IPv6: $LOCAL_SUBNET_V6 -> $LOCAL_IP_V6"
+echo "  Mesh IPv4:  $TAILSCALE_SUBNET_V4 -> $TAILSCALE_IP_V4"
+echo "  Mesh IPv6:  $TAILSCALE_SUBNET_V6 -> $TAILSCALE_IP_V6"
 
-# Generate config from template
+# Generate config from template by substituting all variables
 sed -e "s|__DOMAIN__|$DOMAIN|g" \
-    -e "s|__LOCAL_SUBNET__|$LOCAL_SUBNET|g" \
-    -e "s|__LOCAL_IP__|$LOCAL_IP|g" \
-    -e "s|__TAILSCALE_SUBNET__|$TAILSCALE_SUBNET|g" \
-    -e "s|__TAILSCALE_IP__|$TAILSCALE_IP|g" \
+    -e "s|__LOCAL_SUBNET_V4__|$LOCAL_SUBNET_V4|g" \
+    -e "s|__LOCAL_SUBNET_V6__|$LOCAL_SUBNET_V6|g" \
+    -e "s|__LOCAL_IP_V4__|$LOCAL_IP_V4|g" \
+    -e "s|__LOCAL_IP_V6__|$LOCAL_IP_V6|g" \
+    -e "s|__TAILSCALE_SUBNET_V4__|$TAILSCALE_SUBNET_V4|g" \
+    -e "s|__TAILSCALE_SUBNET_V6__|$TAILSCALE_SUBNET_V6|g" \
+    -e "s|__TAILSCALE_IP_V4__|$TAILSCALE_IP_V4|g" \
+    -e "s|__TAILSCALE_IP_V6__|$TAILSCALE_IP_V6|g" \
     "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
 echo "✓ Generated: $CONFIG_FILE"

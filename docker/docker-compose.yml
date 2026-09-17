@@ -51,5 +51,6 @@ volumes:
 
 include:
   - docker-compose-utilities.yml
+  - docker-compose-dawarich.yml
   - docker-compose-monitor.yml
   - docker-compose-media.yml

@@ -3,7 +3,7 @@ services:
   # Ports: 8090
   beszel:
     user: 1000:1000
-    image: henrygd/beszel:0.18
+    image: henrygd/beszel:0.19
     container_name: beszel
     hostname: beszel
     restart: unless-stopped

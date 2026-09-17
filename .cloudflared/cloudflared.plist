@@ -8,18 +8,11 @@
 		<false/>
 	</dict>
 	<key>Label</key>
-	<string>homebrew.mxcl.cloudflared</string>
-	<key>LimitLoadToSessionType</key>
-	<array>
-		<string>Aqua</string>
-		<string>Background</string>
-		<string>LoginWindow</string>
-		<string>StandardIO</string>
-		<string>System</string>
-	</array>
+	<string>sh.brew.cloudflared</string>
+
 	<key>ProgramArguments</key>
 	<array>
-		<string>/opt/homebrew/bin/cloudflared</string>
+		<string>/opt/homebrew/opt/cloudflared/bin/cloudflared</string>
 		<string>--config</string>
 		<string>/opt/homebrew/etc/cloudflared/cloudflare.yml</string>
 		<string>tunnel</string>
