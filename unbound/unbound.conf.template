@@ -107,7 +107,6 @@ view:
     local-data: "firefox.__DOMAIN__. IN A __LOCAL_IP_V4__"
     local-data: "filebrowser.__DOMAIN__. IN A __LOCAL_IP_V4__"
     local-data: "vaultwarden.__DOMAIN__. IN A __LOCAL_IP_V4__"
-    local-data: "wud.__DOMAIN__. IN A __LOCAL_IP_V4__"
 
     local-data: "dawarich.__DOMAIN__. IN A __LOCAL_IP_V4__"
 
@@ -135,7 +134,6 @@ view:
     local-data: "firefox.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
     local-data: "filebrowser.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
     local-data: "vaultwarden.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
-    local-data: "wud.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
 
     local-data: "dawarich.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
 

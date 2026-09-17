@@ -15,8 +15,7 @@ ingress:
     service: http://127.0.0.1:6800
   - hostname: vaultwarden.225274.xyz
     service: http://127.0.0.1:8100
-  - hostname: wud.225274.xyz
-    service: http://127.0.0.1:80
+
 
   # Dawarich
   - hostname: dawarich.225274.xyz

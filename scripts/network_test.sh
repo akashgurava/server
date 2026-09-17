@@ -13,7 +13,6 @@ DEFAULT_TARGETS=(
 
   "utilities.filebrowser:6800"
   "utilities.vaultwarden:8100"
-  "utilities.wud:3888"
 
   "monitor.beszel:8090"
   
