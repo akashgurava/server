@@ -54,8 +54,8 @@ services:
       - ${LCL_VAULTWARDEN_CONFIG}:/data
     environment:
       TZ: ${TZ}
-      ROCKET_ADDRESS: ::0
-      WEBSOCKET_ADDRESS: ::0
+      ROCKET_ADDRESS: "::"
+      WEBSOCKET_ADDRESS: "::"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.225274.xyz`)"
@@ -81,6 +81,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       TZ: ${TZ}
+      WUD_AUTH_ADMIN_USER: ${WUD_ADMIN_USER}
+      WUD_AUTH_ADMIN_PASSWORD: ${WUD_ADMIN_PASSWORD}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wud.rule=Host(`wud.225274.xyz`)"

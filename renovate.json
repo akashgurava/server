@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "description": "Keep alpine tag flavor for images using alpine",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["redis", "imresamu/postgis", "gtstef/filebrowser"],
+      "allowedVersions": "/-alpine|-slim/"
+    },
+    {
+      "description": "Ignore legacy Ubuntu/date-based tags from linuxserver.io",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["lscr.io/linuxserver/**"],
+      "allowedVersions": "!/^(18\\.|20\\.|22\\.|24\\.|2021\\.|2022\\.|2023\\.)/"
+    },
+    {
+      "description": "Group all media stack updates together",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "lscr.io/linuxserver/**",
+        "ghcr.io/cross-seed/**",
+        "ghcr.io/dictionarry-hub/**"
+      ],
+      "groupName": "media stack"
+    }
+  ]
+}
