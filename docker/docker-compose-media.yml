@@ -36,7 +36,7 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.qbit.rule=Host(`qbit.225274.xyz`)"
+      - "traefik.http.routers.qbit.rule=Host(`qbit.${DOMAIN}`)"
       - "traefik.http.routers.qbit.entrypoints=websecure"
       - "traefik.http.routers.qbit.tls=true"
       - "traefik.http.services.qbit.loadbalancer.server.port=8088"
@@ -66,7 +66,7 @@ services:
       - ${EXT_STORAGE_BASE}:/storage
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.cross-seed.rule=Host(`cross-seed.225274.xyz`)"
+      - "traefik.http.routers.cross-seed.rule=Host(`cross-seed.${DOMAIN}`)"
       - "traefik.http.routers.cross-seed.entrypoints=websecure"
       - "traefik.http.routers.cross-seed.tls=true"
       - "traefik.http.services.cross-seed.loadbalancer.server.port=2468"
@@ -100,7 +100,7 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.225274.xyz`)"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DOMAIN}`)"
       - "traefik.http.routers.prowlarr.entrypoints=websecure"
       - "traefik.http.routers.prowlarr.tls=true"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
@@ -135,7 +135,7 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.radarr.rule=Host(`radarr.225274.xyz`)"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
       - "traefik.http.routers.radarr.entrypoints=websecure"
       - "traefik.http.routers.radarr.tls=true"
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
@@ -170,7 +170,7 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.sonarr.rule=Host(`sonarr.225274.xyz`)"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
       - "traefik.http.routers.sonarr.entrypoints=websecure"
       - "traefik.http.routers.sonarr.tls=true"
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
@@ -203,7 +203,7 @@ services:
   #     retries: 3
   #   labels:
   #     - "traefik.enable=true"
-  #     - "traefik.http.routers.profilarr.rule=Host(`profilarr.225274.xyz`)"
+  #     - "traefik.http.routers.profilarr.rule=Host(`profilarr.${DOMAIN}`)"
   #     - "traefik.http.routers.profilarr.entrypoints=websecure"
   #     - "traefik.http.routers.profilarr.tls=true"
   #     - "traefik.http.services.profilarr.loadbalancer.server.port=6868"
@@ -230,7 +230,7 @@ services:
       PGID: 1000
       TZ: ${TZ}
       # Uncomment ORIGIN if you use a reverse proxy to access your containers.
-      ORIGIN: https://profilarr.225274.xyz
+      ORIGIN: https://profilarr.${DOMAIN}
     healthcheck:
       test: [ "CMD-SHELL", "curl -fsS http://localhost:6868/health || exit 1" ]
       start_period: 5s
@@ -239,7 +239,7 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.profilarr.rule=Host(`profilarr.225274.xyz`)"
+      - "traefik.http.routers.profilarr.rule=Host(`profilarr.${DOMAIN}`)"
       - "traefik.http.routers.profilarr.entrypoints=websecure"
       - "traefik.http.routers.profilarr.tls=true"
       - "traefik.http.services.profilarr.loadbalancer.server.port=6868"
@@ -250,7 +250,7 @@ services:
   jellyfin:
     # Needs root? error unable to access /data etc.
     # user: 1000:1000
-    image: lscr.io/linuxserver/jellyfin:10.11.11
+    image: linuxserver/jellyfin:version-12.1ubu2604
     container_name: jellyfin
     hostname: jellyfin
     restart: unless-stopped
@@ -271,7 +271,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jellyfin.entrypoints=websecure"
-      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.225274.xyz`)"
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)"
       - "traefik.http.routers.jellyfin.tls=true"
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
       - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"

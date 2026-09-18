@@ -79,7 +79,7 @@ services:
       DATABASE_USERNAME: ${DAWARICH_DB_USER:-dawarich}
       DATABASE_PASSWORD: ${DAWARICH_DB_PASSWORD}
       DATABASE_NAME: ${DAWARICH_DB_NAME:-dawarich_production}
-      APPLICATION_HOSTS: ${DAWARICH_HOSTS:-192.168.1.2,localhost,127.0.0.1,dawarich.225274.xyz}
+      APPLICATION_HOSTS: ${DAWARICH_HOSTS}
       TIME_ZONE: ${DAWARICH_TIME_ZONE:-Asia/Kolkata}
       APPLICATION_PROTOCOL: ${DAWARICH_PROTOCOL:-http}
       PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
@@ -108,7 +108,7 @@ services:
         restart: true
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dawarich.rule=Host(`dawarich.225274.xyz`)"
+      - "traefik.http.routers.dawarich.rule=Host(`dawarich.${DOMAIN}`)"
       - "traefik.http.routers.dawarich.entrypoints=websecure"
       - "traefik.http.routers.dawarich.tls=true"
       - "traefik.http.services.dawarich.loadbalancer.server.port=3000"
@@ -142,7 +142,7 @@ services:
       DATABASE_USERNAME: ${DAWARICH_DB_USER:-dawarich}
       DATABASE_PASSWORD: ${DAWARICH_DB_PASSWORD}
       DATABASE_NAME: ${DAWARICH_DB_NAME:-dawarich_production}
-      APPLICATION_HOSTS: ${DAWARICH_HOSTS:-192.168.1.2,localhost,127.0.0.1,dawarich.225274.xyz}
+      APPLICATION_HOSTS: ${DAWARICH_HOSTS}
       BACKGROUND_PROCESSING_CONCURRENCY: 3
       TIME_ZONE: ${DAWARICH_TIME_ZONE:-Asia/Kolkata}
       APPLICATION_PROTOCOL: ${DAWARICH_PROTOCOL:-http}

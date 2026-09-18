@@ -54,3 +54,4 @@ include:
   - docker-compose-dawarich.yml
   - docker-compose-monitor.yml
   - docker-compose-media.yml
+  - docker-compose-multica.yml

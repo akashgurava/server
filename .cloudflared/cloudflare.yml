@@ -41,4 +41,8 @@ ingress:
   - hostname: jellyfin.225274.xyz
     service: http://127.0.0.1:8096
 
+  # AI
+  - hostname: multica.225274.xyz
+    service: http://127.0.0.1:3005
+
   - service: http_status:404

@@ -119,6 +119,8 @@ view:
     local-data: "profilarr.__DOMAIN__. IN A __LOCAL_IP_V4__"
     local-data: "jellyfin.__DOMAIN__. IN A __LOCAL_IP_V4__"
 
+    local-data: "multica.__DOMAIN__. IN A __LOCAL_IP_V4__"
+
 # View for Tailscale network
 view:
     name: "tailscale-view"
@@ -145,3 +147,5 @@ view:
     local-data: "sonarr.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
     local-data: "profilarr.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
     local-data: "jellyfin.__DOMAIN__. IN A __TAILSCALE_IP_V4__"
+
+    local-data: "multica.__DOMAIN__. IN A __TAILSCALE_IP_V4__"

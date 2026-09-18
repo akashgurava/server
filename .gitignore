@@ -5,3 +5,4 @@ bkp
 
 logs
 bin
+*.pem
