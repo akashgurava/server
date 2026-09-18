@@ -11,7 +11,47 @@ networks:
         - subnet: 172.18.0.0/16
         - subnet: 2001:db8:1::/64
 
+services:
+  # Reverse Proxy - Traefik
+  # Ports: 80, 443, 8080
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    hostname: traefik
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.1.2
+        ipv6_address: 2001:db8:1::102
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/traefik/dynamic.yml:/config/dynamic.yml:ro
+      - ./config/traefik/htpasswd:/config/htpasswd:ro
+      # Needs docker socket to read labels
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Volume to store letsencrypt certificates
+      - traefik-letsencrypt:/letsencrypt
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:8082/ping" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      TZ: ${TZ}
+      CF_DNS_API_TOKEN: ${CF_API_TOKEN}
+
+volumes:
+  traefik-letsencrypt:
+    name: traefik-letsencrypt
+
 include:
+  - docker-compose-utilities.yml
+  - docker-compose-dawarich.yml
   - docker-compose-monitor.yml
   - docker-compose-media.yml
-  - docker-compose-ai.yml
+  - docker-compose-multica.yml

@@ -1,0 +1,95 @@
+services:
+  # Multica PostgreSQL + pgvector
+  multica_postgres:
+    image: pgvector/pgvector:pg17
+    container_name: multica_postgres
+    hostname: multica_postgres
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.3.2
+        ipv6_address: 2001:db8:1::302
+    environment:
+      POSTGRES_DB: ${MULTICA_DB_NAME}
+      POSTGRES_USER: ${MULTICA_DB_USER}
+      POSTGRES_PASSWORD: ${MULTICA_DB_PASSWORD}
+    volumes:
+      - ${LCL_MULTICA_DB}:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${MULTICA_DB_USER} -d ${MULTICA_DB_NAME}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Multica Backend
+  # Ports: 8085 (mapped to internal 8080)
+  multica_backend:
+    image: ghcr.io/multica-ai/multica-backend:latest
+    container_name: multica_backend
+    hostname: multica_backend
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.3.3
+        ipv6_address: 2001:db8:1::303
+    depends_on:
+      multica_postgres:
+        condition: service_healthy
+    ports:
+      - "${MULTICA_BACKEND_PORT}:8080"
+    volumes:
+      - ${LCL_MULTICA_UPLOADS}:/app/data/uploads
+    environment:
+      # Database
+      DATABASE_URL: postgres://${MULTICA_DB_USER}:${MULTICA_DB_PASSWORD}@multica_postgres:5432/${MULTICA_DB_NAME}?sslmode=disable
+      DATABASE_SEARCH_WORK_MEM_MB: 64
+
+      # Server & Auth
+      PORT: "8080"
+      APP_ENV: ${MULTICA_APP_ENV}
+      JWT_SECRET: ${MULTICA_JWT_SECRET}
+      MULTICA_DEV_VERIFICATION_CODE: ${MULTICA_DEV_VERIFICATION_CODE}
+      ALLOW_SIGNUP: "true"
+
+      # URLs & Allowed Origins
+      FRONTEND_ORIGIN: ${MULTICA_FRONTEND_ORIGIN}
+      MULTICA_APP_URL: ${MULTICA_APP_URL}
+      MULTICA_PUBLIC_URL: ${MULTICA_PUBLIC_URL}
+      CORS_ALLOWED_ORIGINS: ${MULTICA_CORS_ALLOWED_ORIGINS}
+
+      # GitHub App Integration
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG}
+      GITHUB_APP_ID: ${GITHUB_APP_ID}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+
+  # Multica Frontend
+  # Ports: 3005 (mapped to internal 3000)
+  multica_frontend:
+    image: ghcr.io/multica-ai/multica-web:latest
+    container_name: multica_frontend
+    hostname: multica_frontend
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.3.4
+        ipv6_address: 2001:db8:1::304
+    depends_on:
+      - multica_backend
+    ports:
+      - "${MULTICA_FRONTEND_PORT}:3000"
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      REMOTE_API_URL: http://multica_backend:8080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.multica.rule=Host(`multica.${DOMAIN}`)"
+      - "traefik.http.routers.multica.entrypoints=websecure"
+      - "traefik.http.routers.multica.tls=true"
+      - "traefik.http.services.multica.loadbalancer.server.port=3000"
+      - "traefik.http.routers.multica.tls.certresolver=letsencrypt"

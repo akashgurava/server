@@ -1,0 +1,66 @@
+services:
+  # Filebrowser
+  # Ports: 5900
+  filebrowser:
+    user: 1000:1000
+    image: gtstef/filebrowser:1-stable-slim
+    container_name: filebrowser
+    hostname: filebrowser
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.2.1
+        ipv6_address: 2001:db8:1::201
+    ports:
+      - "6800:6800"
+    volumes:
+      - './config/filebrowser:/home/filebrowser/data'
+      - ${LCL_USER_DOWNLOADS_BASE}:/downloads
+      - ${EXT_STORAGE_BASE}:/storage
+    environment:
+      FILEBROWSER_CONFIG: "/home/filebrowser/data/config.yml"
+      FILEBROWSER_ADMIN_PASSWORD: ${FILEBROWSER_ADMIN_PASSWORD}
+      USER_ID: 1000
+      GROUP_ID: 1000
+      TZ: ${TZ}
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:6800" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.${DOMAIN}`)"
+      - "traefik.http.routers.filebrowser.entrypoints=websecure"
+      - "traefik.http.routers.filebrowser.tls=true"
+      - "traefik.http.services.filebrowser.loadbalancer.server.port=6800"
+      - "traefik.http.routers.filebrowser.tls.certresolver=letsencrypt"
+
+  # Vaultwarden
+  # Ports: 8100
+  vaultwarden:
+    image: ghcr.io/dani-garcia/vaultwarden:1.36.0
+    container_name: vaultwarden
+    hostname: vaultwarden
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.2.21
+        ipv6_address: 2001:db8:1::221
+    ports:
+      - "8100:80"
+    volumes:
+      - ${LCL_VAULTWARDEN_CONFIG}:/data
+    environment:
+      TZ: ${TZ}
+      ROCKET_ADDRESS: "::"
+      WEBSOCKET_ADDRESS: "::"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`vaultwarden.${DOMAIN}`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=websecure"
+      - "traefik.http.routers.vaultwarden.tls=true"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+      - "traefik.http.routers.vaultwarden.tls.certresolver=letsencrypt"
+

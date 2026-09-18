@@ -1,14 +1,17 @@
 services:
 
-  # Runs on port 8088
+  # qBitorrent
+  # Ports: 8088, 6881
   qbit:
-    image: lscr.io/linuxserver/qbittorrent:5.1.0
+    user: 1000:1000
+    image: lscr.io/linuxserver/qbittorrent:5.1.4
     container_name: qbit
+    hostname: qbit
     restart: unless-stopped
     networks:
       server_network:
-        ipv4_address: 172.18.2.1
-        ipv6_address: 2001:db8:1::201
+        ipv4_address: 172.18.4.1
+        ipv6_address: 2001:db8:1::401
     ports:
       - "8088:8088"
       # Discovery ports
@@ -16,66 +19,259 @@ services:
       - "6881:6881/udp"
     volumes:
       - ${LCL_QBIT_CONFIG}:/config
-      - ${LCL_QBIT_DOWNLOADS}:/media/downloads
+      - ${LCL_QBIT_DOWNLOADS}:/incomplete
+      - ${EXT_STORAGE_BASE}:/storage
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ}
-      - WEBUI_PORT=8088
-      - TORRENTING_PORT=6881
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+      WEBUI_PORT: "8088"
+      TORRENTING_PORT: "6881"
+      DOCKER_MODS: "ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest"
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:8088" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbit.rule=Host(`qbit.${DOMAIN}`)"
+      - "traefik.http.routers.qbit.entrypoints=websecure"
+      - "traefik.http.routers.qbit.tls=true"
+      - "traefik.http.services.qbit.loadbalancer.server.port=8088"
+      - "traefik.http.routers.qbit.tls.certresolver=letsencrypt"
 
-  sonarr:
-    image: lscr.io/linuxserver/sonarr:4.0.20
-    container_name: sonarr
+  # Cross-Seed
+  # Ports: 2468
+  cross-seed:
+    user: 1000:1000
+    command: daemon
+    image: ghcr.io/cross-seed/cross-seed:6
+    container_name: cross-seed
+    hostname: cross-seed
     restart: unless-stopped
     networks:
       server_network:
-        ipv4_address: 172.18.2.11
-        ipv6_address: 2001:db8:1::211
+        ipv4_address: 172.18.4.2
+        ipv6_address: 2001:db8:1::402
     ports:
-      - "8989:8989"
-    volumes:
-      - ${LCL_SONARR_CONFIG}:/config
-      - ${EXT_MEDIA_DATA}:/media
-      - ${LCL_QBIT_DOWNLOADS}:/downloads
+      - "2468:2468"
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ}
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    volumes:
+      - ${LCL_CROSS_SEED_CONFIG}:/config
+      - ${EXT_STORAGE_BASE}:/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cross-seed.rule=Host(`cross-seed.${DOMAIN}`)"
+      - "traefik.http.routers.cross-seed.entrypoints=websecure"
+      - "traefik.http.routers.cross-seed.tls=true"
+      - "traefik.http.services.cross-seed.loadbalancer.server.port=2468"
+      - "traefik.http.routers.cross-seed.tls.certresolver=letsencrypt"
 
-  radarr:
-    image: lscr.io/linuxserver/radarr:6.4.4
-    container_name: radarr
+  # Prowlarr
+  # Ports: 9696
+  prowlarr:
+    user: 1000:1000
+    image: lscr.io/linuxserver/prowlarr:2.4.0
+    container_name: prowlarr
+    hostname: prowlarr
     restart: unless-stopped
     networks:
       server_network:
-        ipv4_address: 172.18.2.12
-        ipv6_address: 2001:db8:1::212
+        ipv4_address: 172.18.4.4
+        ipv6_address: 2001:db8:1::404
+    ports:
+      - "9696:9696"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    volumes:
+      - ${LCL_PROWLARR_CONFIG}:/config
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:9696" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${DOMAIN}`)"
+      - "traefik.http.routers.prowlarr.entrypoints=websecure"
+      - "traefik.http.routers.prowlarr.tls=true"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+      - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt"
+
+  # Radarr
+  # Ports: 7878
+  radarr:
+    user: 1000:1000
+    image: lscr.io/linuxserver/radarr:6.3.0
+    container_name: radarr
+    hostname: radarr
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.4.11
+        ipv6_address: 2001:db8:1::411
     ports:
       - "7878:7878"
     volumes:
       - ${LCL_RADARR_CONFIG}:/config
-      - ${EXT_MEDIA_DATA}:/media
-      - ${LCL_QBIT_DOWNLOADS}:/downloads
+      - ${EXT_STORAGE_BASE}:/storage
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ}
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:7878" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
+      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.routers.radarr.tls=true"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+      - "traefik.http.routers.radarr.tls.certresolver=letsencrypt"
 
-  jellyfin:
-    image: lscr.io/linuxserver/jellyfin:10.10.7
-    container_name: jellyfin
+  # Sonarr
+  # Ports: 8989
+  sonarr:
+    user: 1000:1000
+    image: lscr.io/linuxserver/sonarr:4.0.19
+    container_name: sonarr
+    hostname: sonarr
     restart: unless-stopped
     networks:
       server_network:
-        ipv4_address: 172.18.2.20
-        ipv6_address: 2001:db8:1::220
+        ipv4_address: 172.18.4.12
+        ipv6_address: 2001:db8:1::412
     ports:
-      - "8096:8096"
+      - "8989:8989"
+    volumes:
+      - ${LCL_SONARR_CONFIG}:/config
+      - ${EXT_STORAGE_BASE}:/storage
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:8989" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
+      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr.tls=true"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+      - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
+
+  # # Profilarr
+  # # Ports: 6868
+  # profilarr:
+  #   image: santiagosayshey/profilarr:beta
+  #   container_name: profilarr
+  #   hostname: profilarr
+  #   restart: unless-stopped
+  #   networks:
+  #     server_network:
+  #       ipv4_address: 172.18.4.13
+  #       ipv6_address: 2001:db8:1::413
+  #   ports:
+  #     - "6868:6868"
+  #   volumes:
+  #     - ${LCL_PROFILARR_CONFIG}:/config
+  #   environment:
+  #     PUID: "1000"
+  #     PGID: "1000"
+  #     TZ: "Asia/Kolkata"
+  #   healthcheck:
+  #     test: [ "CMD", "wget", "-q", "--tries=1", "--spider", "http://localhost:6868" ]
+  #     start_period: 5s
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.profilarr.rule=Host(`profilarr.${DOMAIN}`)"
+  #     - "traefik.http.routers.profilarr.entrypoints=websecure"
+  #     - "traefik.http.routers.profilarr.tls=true"
+  #     - "traefik.http.services.profilarr.loadbalancer.server.port=6868"
+  #     - "traefik.http.routers.profilarr.tls.certresolver=letsencrypt"
+
+  # Profilarr
+  # Ports: 6868
+  profilarr:
+    user: 1000:1000
+    image: ghcr.io/dictionarry-hub/profilarr:latest
+    container_name: profilarr
+    hostname: profilarr
+    restart: unless-stopped
+    networks:
+      server_network:
+        ipv4_address: 172.18.4.13
+        ipv6_address: 2001:db8:1::413
+    ports:
+      - "6868:6868"
+    volumes:
+      - ${LCL_PROFILARR_CONFIG}:/config
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: ${TZ}
+      # Uncomment ORIGIN if you use a reverse proxy to access your containers.
+      ORIGIN: https://profilarr.${DOMAIN}
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:6868/health || exit 1" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.profilarr.rule=Host(`profilarr.${DOMAIN}`)"
+      - "traefik.http.routers.profilarr.entrypoints=websecure"
+      - "traefik.http.routers.profilarr.tls=true"
+      - "traefik.http.services.profilarr.loadbalancer.server.port=6868"
+      - "traefik.http.routers.profilarr.tls.certresolver=letsencrypt"
+
+  # Jellyfin
+  # Ports: 8096
+  jellyfin:
+    # Needs root? error unable to access /data etc.
+    # user: 1000:1000
+    image: linuxserver/jellyfin:version-12.1ubu2604
+    container_name: jellyfin
+    hostname: jellyfin
+    restart: unless-stopped
+    network_mode: host
     volumes:
       - ${LCL_JELLYFIN_CONFIG}:/config
-      - ${EXT_MEDIA_DATA}:/media
+      - ${EXT_STORAGE_BASE}:/storage
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ}
+      PUID: "1000"
+      PGID: "1000"
+      TZ: ${TZ}
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8096/health || exit 1" ]
+      start_period: 5s
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)"
+      - "traefik.http.routers.jellyfin.tls=true"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+      - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"

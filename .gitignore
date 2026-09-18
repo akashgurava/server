@@ -2,6 +2,7 @@
 data
 .env
 bkp
-# Private key file
-acme.json
+
 logs
+bin
+*.pem

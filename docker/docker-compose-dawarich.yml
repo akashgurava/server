@@ -1,0 +1,174 @@
+services:
+
+  # Dawarich Redis
+  dawarich_redis:
+    image: redis:7.4-alpine
+    container_name: dawarich_redis
+    hostname: dawarich_redis
+    command: >
+      redis-server
+      --save 900 1
+      --save 300 10
+      --appendonly no
+    networks:
+      server_network:
+        ipv4_address: 172.18.5.3
+    volumes:
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/shared:/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  # Dawarich Database (PostGIS)
+  dawarich_db:
+    image: imresamu/postgis:17-3.5-alpine
+    shm_size: 1G
+    container_name: dawarich_db
+    hostname: dawarich_db
+    volumes:
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/db_data:/var/lib/postgresql/data
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/shared:/var/shared
+    networks:
+      server_network:
+        ipv4_address: 172.18.5.4
+    environment:
+      POSTGRES_USER: ${DAWARICH_DB_USER:-dawarich}
+      POSTGRES_PASSWORD: ${DAWARICH_DB_PASSWORD}
+      POSTGRES_DB: ${DAWARICH_DB_NAME:-dawarich_production}
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DAWARICH_DB_USER:-dawarich} -d ${DAWARICH_DB_NAME:-dawarich_production}" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  # Dawarich Web App
+  # Ports: 3000
+  dawarich_app:
+    image: freikin/dawarich:latest
+    container_name: dawarich_app
+    hostname: dawarich_app
+    volumes:
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/public:/var/app/public
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/watched:/var/app/tmp/imports/watched
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/storage:/var/app/storage
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/db_data:/dawarich_db_data
+    networks:
+      server_network:
+        ipv4_address: 172.18.5.1
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    ports:
+      - "${DAWARICH_APP_PORT:-3000}:3000"
+    stdin_open: true
+    tty: true
+    entrypoint: web-entrypoint.sh
+    command: ['bin/rails', 'server', '-p', '3000', '-b', '0.0.0.0']
+    restart: unless-stopped
+    environment:
+      RAILS_ENV: ${RAILS_ENV:-production}
+      REDIS_URL: ${REDIS_URL:-redis://dawarich_redis:6379}
+      DATABASE_HOST: ${DATABASE_HOST:-dawarich_db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_USERNAME: ${DAWARICH_DB_USER:-dawarich}
+      DATABASE_PASSWORD: ${DAWARICH_DB_PASSWORD}
+      DATABASE_NAME: ${DAWARICH_DB_NAME:-dawarich_production}
+      APPLICATION_HOSTS: ${DAWARICH_HOSTS}
+      TIME_ZONE: ${DAWARICH_TIME_ZONE:-Asia/Kolkata}
+      APPLICATION_PROTOCOL: ${DAWARICH_PROTOCOL:-http}
+      PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
+      SECRET_KEY_BASE: ${DAWARICH_SECRET_KEY_BASE}
+      RAILS_LOG_TO_STDOUT: "true"
+      SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
+      WEB_CONCURRENCY: 1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+    depends_on:
+      dawarich_db:
+        condition: service_healthy
+        restart: true
+      dawarich_redis:
+        condition: service_healthy
+        restart: true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dawarich.rule=Host(`dawarich.${DOMAIN}`)"
+      - "traefik.http.routers.dawarich.entrypoints=websecure"
+      - "traefik.http.routers.dawarich.tls=true"
+      - "traefik.http.services.dawarich.loadbalancer.server.port=3000"
+      - "traefik.http.routers.dawarich.tls.certresolver=letsencrypt"
+
+  # Dawarich Background Worker (Sidekiq)
+  dawarich_sidekiq:
+    image: freikin/dawarich:latest
+    container_name: dawarich_sidekiq
+    hostname: dawarich_sidekiq
+    volumes:
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/public:/var/app/public
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/watched:/var/app/tmp/imports/watched
+      - ${LCL_DAWARICH_BASE:-../data/dawarich}/storage:/var/app/storage
+    networks:
+      server_network:
+        ipv4_address: 172.18.5.2
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    stdin_open: true
+    tty: true
+    entrypoint: sidekiq-entrypoint.sh
+    command: ['sidekiq']
+    restart: unless-stopped
+    environment:
+      RAILS_ENV: ${RAILS_ENV:-production}
+      REDIS_URL: ${REDIS_URL:-redis://dawarich_redis:6379}
+      DATABASE_HOST: ${DATABASE_HOST:-dawarich_db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_USERNAME: ${DAWARICH_DB_USER:-dawarich}
+      DATABASE_PASSWORD: ${DAWARICH_DB_PASSWORD}
+      DATABASE_NAME: ${DAWARICH_DB_NAME:-dawarich_production}
+      APPLICATION_HOSTS: ${DAWARICH_HOSTS}
+      BACKGROUND_PROCESSING_CONCURRENCY: 3
+      TIME_ZONE: ${DAWARICH_TIME_ZONE:-Asia/Kolkata}
+      APPLICATION_PROTOCOL: ${DAWARICH_PROTOCOL:-http}
+      PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
+      SECRET_KEY_BASE: ${DAWARICH_SECRET_KEY_BASE}
+      RAILS_LOG_TO_STDOUT: "true"
+      SELF_HOSTED: "true"
+      STORE_GEODATA: "true"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    healthcheck:
+      test: [ "CMD-SHELL", "pgrep -f sidekiq" ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+    depends_on:
+      dawarich_db:
+        condition: service_healthy
+        restart: true
+      dawarich_redis:
+        condition: service_healthy
+        restart: true
+      dawarich_app:
+        condition: service_healthy
+        restart: true
